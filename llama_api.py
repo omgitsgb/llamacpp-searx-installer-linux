@@ -58,21 +58,24 @@ def read_root():
 def generate(prompt: str):
     try:
         search_results = []
+        search_triggered = False
         full_prompt = prompt
 
-        # Include search results if any trigger word is present
+        # Check for trigger words
         if any(word.lower() in prompt.lower() for word in SEARCH_TRIGGERS):
             search_results = searx_search(prompt)
             search_text = "\n".join(search_results)
             full_prompt = f"{prompt}\n\nHere is some recent content from the web:\n{search_text}"
+            search_triggered = True
 
         # Run the model
         output = llm(full_prompt, max_tokens=200)
-        
+
         return {
             "prompt": prompt,
+            "search_triggered": search_triggered,
             "search_results": search_results,
-            "output": output['choices'][0]['text']
+            "model_output": output['choices'][0]['text']
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
