@@ -6,8 +6,6 @@ from llama_cpp import Llama
 # ---------------------------
 # Configuration
 # ---------------------------
-
-# Automatically find the first .gguf model in the models/ folder
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 gguf_models = [f for f in os.listdir(MODEL_DIR) if f.endswith(".gguf")]
 
@@ -16,20 +14,18 @@ if not gguf_models:
 
 MODEL_PATH = os.path.join(MODEL_DIR, gguf_models[0])
 
-# Initialize LLaMA
-llm = Llama(model_path=MODEL_PATH)
+# Initialize LLaMA with a larger context window
+llm = Llama(model_path=MODEL_PATH, n_ctx=8192)
 
-# Initialize FastAPI
 app = FastAPI()
 
-# Trigger words for SearXNG search
 SEARCH_TRIGGERS = ["news", "latest", "current", "update", "headlines"]
 
-# SearXNG endpoint (default to Docker container network)
-SEARX_URL = os.getenv("SEARX_URL", "http://searxng:8080/search")
+# Always use local SearXNG
+SEARX_URL = "http://localhost:8080/search"
 
 # ---------------------------
-# Helper: Perform a SearXNG search
+# Helper: Perform SearXNG search
 # ---------------------------
 def searx_search(query):
     try:
@@ -37,15 +33,22 @@ def searx_search(query):
         resp = requests.get(SEARX_URL, params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json()
-        
-        snippets = []
+
+        results = []
         for result in data.get("results", []):
-            content = result.get("content") or f"{result.get('title','')} : {result.get('description','')}"
-            if content:
-                snippets.append(content)
-        return snippets[:5]  # top 5 results
+            title = result.get("title", "")
+            content = result.get("content") or result.get("description") or ""
+            url = result.get("url", "")
+            if title or content or url:
+                results.append({
+                    "title": title.strip(),
+                    "content": content.strip(),
+                    "url": url.strip()
+                })
+
+        return results[:5]  # top 5 results
     except Exception as e:
-        return [f"[Error fetching search results: {e}]"]
+        return [{"title": "", "content": f"[Error fetching search results: {e}]", "url": ""}]
 
 # ---------------------------
 # Routes
@@ -57,22 +60,44 @@ def read_root():
 @app.get("/generate")
 def generate(prompt: str):
     try:
+        search_triggered = False
         search_results = []
-        full_prompt = prompt
 
-        # Include search results if any trigger word is present
+        # Trigger SearXNG search if prompt contains trigger words
         if any(word.lower() in prompt.lower() for word in SEARCH_TRIGGERS):
+            search_triggered = True
             search_results = searx_search(prompt)
-            search_text = "\n".join(search_results)
-            full_prompt = f"{prompt}\n\nHere is some recent content from the web:\n{search_text}"
 
-        # Run the model
-        output = llm(full_prompt, max_tokens=200)
-        
+        # Build full prompt for LLaMA
+        if search_results:
+            numbered_results = "\n".join([
+                f"{i+1}. Title: {r['title']}\n   Content: {r['content'][:300]}\n   URL: {r['url']}"
+                for i, r in enumerate(search_results)
+            ])
+            full_prompt = f"""
+You are an AI assistant. Answer the following question using ONLY the information from the search results below.
+If the answer is not fully in the results, summarize what is available. Do NOT include unrelated facts.
+
+Question:
+{prompt}
+
+Search Results:
+{numbered_results}
+
+Answer:
+"""
+        else:
+            full_prompt = prompt
+
+        # Generate output
+        output = llm(full_prompt, max_tokens=2000)
+
         return {
             "prompt": prompt,
+            "search_triggered": search_triggered,
             "search_results": search_results,
-            "output": output['choices'][0]['text']
+            "output": output['choices'][0]['text'].strip()
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
