@@ -97,7 +97,7 @@ docker rm -f llamacpp-api 2>/dev/null || true
 
 echo "Starting LlamaCPP container on network $DOCKER_NET..."
 docker run -d --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api \
-    llamacpp-api uvicorn llama_api:app --host 0.0.0.0 --port 8000
+    llamacpp-api uvicorn main:app --host 0.0.0.0 --port 8000
 
 # --------------------------
 # 8. Create SearXNG folder and settings
