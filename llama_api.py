@@ -25,8 +25,8 @@ app = FastAPI()
 # Trigger words for SearXNG search
 SEARCH_TRIGGERS = ["news", "latest", "current", "update", "headlines"]
 
-# SearXNG endpoint
-SEARX_URL = "http://searxng:8080/search"
+# SearXNG endpoint (default to Docker container network)
+SEARX_URL = os.getenv("SEARX_URL", "http://searxng:8080/search")
 
 # ---------------------------
 # Helper: Perform a SearXNG search
@@ -34,16 +34,15 @@ SEARX_URL = "http://searxng:8080/search"
 def searx_search(query):
     try:
         params = {"q": query, "format": "json"}
-        resp = requests.get(SEARX_URL, params=params, timeout=5)
+        resp = requests.get(SEARX_URL, params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json()
         
         snippets = []
         for result in data.get("results", []):
-            if "content" in result:
-                snippets.append(result["content"])
-            elif "title" in result and "description" in result:
-                snippets.append(result["title"] + ": " + result["description"])
+            content = result.get("content") or f"{result.get('title','')} : {result.get('description','')}"
+            if content:
+                snippets.append(content)
         return snippets[:5]  # top 5 results
     except Exception as e:
         return [f"[Error fetching search results: {e}]"]
@@ -61,12 +60,13 @@ def generate(prompt: str):
         search_results = []
         full_prompt = prompt
 
-        # Check if prompt contains any trigger words
+        # Include search results if any trigger word is present
         if any(word.lower() in prompt.lower() for word in SEARCH_TRIGGERS):
             search_results = searx_search(prompt)
             search_text = "\n".join(search_results)
             full_prompt = f"{prompt}\n\nHere is some recent content from the web:\n{search_text}"
 
+        # Run the model
         output = llm(full_prompt, max_tokens=200)
         
         return {
