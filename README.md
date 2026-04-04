@@ -243,9 +243,3 @@ curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+te
 curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
 ```
 
-> **Breakdown**:  
-> - `http://localhost:8000/generate` → LlamaCPP endpoint  
-> - `?prompt=...` → prompt text (spaces replaced with `+` or URL-encoded `%20`)  
-> - `-s` → silent mode  
-> - `| jq` → optional, formats JSON nicely
-```
