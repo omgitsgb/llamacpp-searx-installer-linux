@@ -29,17 +29,17 @@ The setup allows LlamaCPP to dynamically query SearXNG for real-time search resu
 
 Clone the repository:
 
-[bash
+```bash
 git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
 cd llamacpp-searx-installer-linux
-]
+```
 
 Run the installer:
 
-[[[bash
+```bash
 chmod +x installer.sh
 ./installer.sh
-]]]
+```
 
 The script will:
 
@@ -61,9 +61,9 @@ The LlamaCPP FastAPI server runs on port `8000`.
 
 Example request:
 
-[[[bash
+```bash
 curl -s -G "http://localhost:8000/generate" --data-urlencode "prompt=What is the latest news today?" | jq
-]]]
+```
 
 - Automatically triggers SearXNG search if prompt contains keywords like:  
   `news`, `latest`, `update`, `headlines`.
@@ -80,9 +80,9 @@ curl -s -G "http://localhost:8000/generate" --data-urlencode "prompt=What is the
 - Supports JSON and HTML results.
 - Example query:
 
-[[[bash
+```bash
 curl -s "http://localhost:8080/search?q=latest+news&format=json" | jq
-]]]
+```
 
 ---
 
@@ -94,7 +94,7 @@ llamacpp-searx-installer-linux/
 ├─ models/               # LLaMA GGUF models
 ├─ llama_api.py          # FastAPI LlamaCPP server
 ├─ README.md             # This file
-]]]
+```
 
 ---
 
@@ -113,21 +113,21 @@ Both containers share a dedicated Docker network:
 
 1. **SearXNG search only**:
 
-[[[bash
+```bash
 curl -s "http://localhost:8080/search?q=latest+news&format=json" | jq
-]]]
+```
 
 2. **LLaMA without search trigger**:
 
-[[[bash
+```bash
 curl -s "http://localhost:8000/generate?prompt=Hello+world" | jq
-]]]
+```
 
 3. **LLaMA with search trigger**:
 
-[[[bash
+```bash
 curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
-]]]
+```
 
 ---
 
@@ -135,10 +135,10 @@ curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" |
 
 - If containers fail to start, check logs:
 
-[[[bash
+```bash
 docker logs llamacpp-api
 docker logs searxng
-]]]
+```
 
 - If ports `8000` or `8080` are in use, either stop conflicting services or change `LLAMA_PORT` / `SEARX_PORT` in `installer.sh`.
 - Ensure your Linux user has permissions to run Docker without `sudo`.
