@@ -217,18 +217,22 @@ docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
 
 ---
 
-## Stability Recommendation
+## Option B – Using Docker volume (recommended, persistent across reboots): Stability Recommendation
 
 Bind mounts like `-v ~/searxng/settings.yml:/etc/searxng/settings.yml` can break on restarts.  
 Use a Docker volume for `/etc/searxng` instead:
 
 ```bash
+
 docker volume create searxng-config
 
 docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
     -v searxng-config:/etc/searxng searxng/searxng:latest
 
 docker cp ~/searxng/settings.yml searxng:/etc/searxng/settings.yml
+
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+
 ```
 
 Volumes persist across reboots and avoid host path issues.
