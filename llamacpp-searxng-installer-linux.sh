@@ -13,7 +13,7 @@ LLAMA_FOLDER="llamacpp-searx-installer-linux"
 MODEL="llama-3.2-1b-instruct-q8_0.gguf"
 MODEL_URL="https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/$MODEL"
 
-SEARX_FOLDER="/home/gb/searxng"
+SEARX_FOLDER="$HOME/searxng"
 SEARX_SETTINGS="$SEARX_FOLDER/settings.yml"
 SEARX_PORT=8080
 LLAMA_PORT=8000
@@ -29,9 +29,9 @@ if ! command -v git &>/dev/null; then
 fi
 
 # --------------------------
-# 2. Remove old Docker / Podman remnants
+# 2. Clean old Docker remnants
 # --------------------------
-sudo apt remove -y $(dpkg --get-selections docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc | cut -f1) || true
+sudo apt remove -y docker.io docker-compose docker-compose-plugin containerd runc 2>/dev/null || true
 sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-compose-plugin || true
 sudo apt-get autoremove -y || true
 sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/apt/keyrings/docker* /etc/apt/sources.list.d/docker*
@@ -90,14 +90,31 @@ fi
 # --------------------------
 # 7. Build and run LlamaCPP container
 # --------------------------
-echo "Building LlamaCPP Docker image..."
-docker build -t llamacpp-api "$LLAMA_FOLDER"
+echo "Building LlamaCPP Docker image (no cache)..."
+docker build --no-cache -t llamacpp-api "$LLAMA_FOLDER"
 
 docker rm -f llamacpp-api 2>/dev/null || true
 
 echo "Starting LlamaCPP container on network $DOCKER_NET..."
-docker run -d --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api \
-    llamacpp-api uvicorn main:app --host 0.0.0.0 --port 8000
+docker run -d --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
+
+# Wait until LlamaCPP responds on localhost
+echo "Waiting for LlamaCPP to be ready on localhost:$LLAMA_PORT..."
+MAX_RETRIES=20
+for i in $(seq 1 $MAX_RETRIES); do
+    if curl -s "http://localhost:$LLAMA_PORT/health" >/dev/null 2>&1; then
+        echo "✅ LlamaCPP is ready on localhost:$LLAMA_PORT"
+        break
+    else
+        echo "⏳ Waiting... ($i/$MAX_RETRIES)"
+        sleep 3
+    fi
+    if [ "$i" -eq "$MAX_RETRIES" ]; then
+        echo "❌ LlamaCPP did not start on localhost:$LLAMA_PORT"
+        docker logs llamacpp-api
+        exit 1
+    fi
+done
 
 # --------------------------
 # 8. Create SearXNG folder and settings
@@ -152,42 +169,44 @@ chmod 644 "$SEARX_SETTINGS"
 # 9. Run SearXNG container
 # --------------------------
 docker rm -f searxng 2>/dev/null || true
-docker run -d --network "$DOCKER_NET" --name searxng \
-    -p $SEARX_PORT:8080 -v "$SEARX_SETTINGS":/etc/searxng/settings.yml:ro searxng/searxng:latest
+docker run -d --network "$DOCKER_NET" --name searxng -p $SEARX_PORT:8080 \
+    -v "$SEARX_SETTINGS":/etc/searxng/settings.yml:ro searxng/searxng:latest
 
 echo "Waiting 10 seconds for SearXNG to start..."
 sleep 10
 
+# --------------------------
+# 10. Verify SearXNG connectivity from host
+# --------------------------
 if curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK" >/dev/null; then
     echo "✅ SearXNG installed and running at http://localhost:$SEARX_PORT"
 else
     echo "⚠️ SearXNG did not respond. Check logs with: docker logs searxng"
 fi
 
-echo "✅ LlamaCPP installed and running at http://localhost:$LLAMA_PORT"
-echo "✅ Setup complete! Both containers are on network $DOCKER_NET"
-echo "Inside LlamaCPP, SearXNG is reachable at http://searxng:8080"
+# --------------------------
+# 11. Test LlamaCPP to SearXNG connectivity (inside container)
+# --------------------------
+docker exec llamacpp-api bash -c "apt-get update && apt-get install -y curl && curl -s http://searxng:8080/search?q=test" >/dev/null \
+    && echo "✅ LlamaCPP can reach SearXNG by container name" \
+    || echo "⚠️ LlamaCPP cannot reach SearXNG"
 
 # --------------------------
-# 10. Run end-to-end API tests
+# 12. End-to-end API tests on localhost
 # --------------------------
 echo ""
 echo "🔹 Running end-to-end API tests..."
 
-sleep 5  # wait for LLaMA to be ready
 API_URL="http://localhost:$LLAMA_PORT/generate?prompt="
 
-# Test 1: SearXNG search only
 echo ""
 echo "Test 1: SearXNG search only"
 curl -s "http://localhost:$SEARX_PORT/search?q=latest+news&format=json" | jq
 
-# Test 2: LLaMA without search trigger
 echo ""
 echo "Test 2: LLaMA only"
 curl -s "${API_URL}$(echo Hello world | sed 's/ /+/g')" | jq
 
-# Test 3: LLaMA with search trigger
 echo ""
 echo "Test 3: LLaMA with search trigger"
 curl -s "${API_URL}$(echo 'What is the latest news today?' | sed 's/ /+/g')" | jq
