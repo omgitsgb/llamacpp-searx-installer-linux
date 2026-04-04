@@ -1,6 +1,6 @@
 import os
-import requests
 import logging
+import requests
 from fastapi import FastAPI, HTTPException
 from llama_cpp import Llama
 
@@ -14,13 +14,24 @@ if not gguf_models:
     raise FileNotFoundError(f"No .gguf model found in {MODEL_DIR}")
 
 MODEL_PATH = os.path.join(MODEL_DIR, gguf_models[0])
-llm = Llama(model_path=MODEL_PATH, n_ctx=4096)
+
+SEARCH_TRIGGERS = ["news", "latest", "current", "update", "headlines"]
+SEARX_URL = "http://searxng:8080/search"  # container DNS on same network
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 
-SEARCH_TRIGGERS = ["news", "latest", "current", "update", "headlines"]
-SEARX_URL = "http://host.docker.internal:8080/search"  # Connect to your host SearXNG
+llm = None  # Will be loaded on startup
+
+# ---------------------------
+# Startup Event to load Llama
+# ---------------------------
+@app.on_event("startup")
+def load_model():
+    global llm
+    logging.info(f"Loading model from {MODEL_PATH} ...")
+    llm = Llama(model_path=MODEL_PATH, n_ctx=4096)
+    logging.info("✅ Model loaded successfully")
 
 # ---------------------------
 # Search helper
@@ -50,8 +61,13 @@ def read_root():
 
 @app.get("/generate")
 def generate(prompt: str):
+    global llm
+    if llm is None:
+        raise HTTPException(status_code=503, detail="Model not loaded yet")
+
     logging.info(f"Prompt: {prompt}")
     try:
+        # Check if search should trigger
         search_triggered = any(word.lower() in prompt.lower() for word in SEARCH_TRIGGERS)
         search_results = searx_search(prompt) if search_triggered else []
 
@@ -64,7 +80,8 @@ def generate(prompt: str):
         else:
             full_prompt = prompt
 
-        output = llm(full_prompt, max_tokens=2000)
+        # Generate response
+        output = llm(full_prompt, max_tokens=512)  # reduce tokens for testing
         return {
             "prompt": prompt,
             "search_triggered": search_triggered,
@@ -72,5 +89,5 @@ def generate(prompt: str):
             "output": output['choices'][0]['text'].strip()
         }
     except Exception as e:
-        logging.error(e)
+        logging.error(f"Error in /generate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
