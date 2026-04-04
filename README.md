@@ -223,6 +223,9 @@ Bind mounts like `-v ~/searxng/settings.yml:/etc/searxng/settings.yml` can break
 Use a Docker volume for `/etc/searxng` instead:
 
 ```bash
+docker stop llamacpp-api searxng
+
+docker rm llamacpp-api searxng
 
 docker volume create searxng-config
 
