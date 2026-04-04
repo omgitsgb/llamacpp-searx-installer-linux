@@ -145,10 +145,6 @@ docker logs searxng
 
 ---
 
-## License
-
-MIT License
-
 ---
 
 ## Notes
