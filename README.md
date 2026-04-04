@@ -1,136 +1,250 @@
 
-# LlamaCPP + SearXNG Networked Installer
+# LlamaCPP + SearXNG Full Installer for Linux (Networked)
 
-This repository provides a **full automated setup** for running **LlamaCPP** with **SearXNG** in Docker on Linux.  
-The setup allows LlamaCPP to dynamically query SearXNG for real-time search results when generating responses.
+This repository provides a **full automated installer** for running **LlamaCPP** with **SearXNG** on Linux. The setup allows LlamaCPP to dynamically query SearXNG for real-time search results when generating responses.
+
+The installer handles:
+
+* Installing Git and Docker (if missing)
+* Cleaning any old Docker remnants
+* Downloading and managing LLaMA models
+* Creating a Docker network for container communication
+* Running both LlamaCPP and SearXNG as Docker containers
+* Testing end-to-end connectivity and functionality
 
 ---
 
 ## Features
 
-- Fully automated Linux installer script (`installer.sh`).
-- Automatically installs Git and Docker if missing.
-- Creates a dedicated Docker network for LlamaCPP and SearXNG.
-- Downloads LLaMA 3.2 1B GGUF model if not already present.
-- Builds and runs LlamaCPP API container.
-- Sets up SearXNG container with JSON and HTML search support.
-- End-to-end API test suite included.
+* ✅ Automated setup with minimal user interaction
+* ✅ Optional persistence of Docker containers on reboot
+* ✅ End-to-end tests for LlamaCPP and SearXNG connectivity
+* ✅ Includes sample test scripts (`test.py`) for verification
+* ✅ Friendly social links for support and community
 
 ---
 
 ## Requirements
 
-- Linux (tested on Ubuntu)
-- `curl`, `git`, `docker` (installed automatically if missing)
-- Internet connection for downloading model and Docker images
+* Linux (tested on Ubuntu 22.04+)
+* `curl` installed
+* Internet connection for downloading models and Docker images
 
 ---
 
-## Installation
-
-Clone the repository:
+## Installer Script Overview
 
 ```bash
-git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
-cd llamacpp-searx-installer-linux
+#!/bin/bash
+set -e
 ```
 
-Run the installer:
+* **Purpose:** Ensures the script exits immediately on any error.
+* **Function:** Prevents partial installations or inconsistent states.
+
+### 1. Configuration
 
 ```bash
-chmod +x installer.sh
-./installer.sh
+LLAMA_REPO="https://github.com/omgitsgb/llamacpp-searx-installer-linux.git"
+LLAMA_FOLDER="llamacpp-searx-installer-linux"
+MODEL="llama-3.2-1b-instruct-q8_0.gguf"
+MODEL_URL="https://huggingface.co/hugging-quants/.../$MODEL"
+SEARX_FOLDER="$HOME/searxng"
+SEARX_SETTINGS="$SEARX_FOLDER/settings.yml"
+SEARX_PORT=8080
+LLAMA_PORT=8000
+DOCKER_NET="llama-searx-net"
 ```
 
-The script will:
+* Configures repository URLs, model names, folders, ports, and Docker network.
 
-1. Install Git and Docker if missing.
-2. Remove old Docker/Podman remnants.
-3. Create a Docker network (`llama-searx-net`).
-4. Clone/update LlamaCPP repository and download the model.
-5. Build and run LlamaCPP container on port `8000`.
-6. Create SearXNG configuration and run container on port `8080`.
-7. Run end-to-end API tests.
+---
+
+### 2. Install Git if missing
+
+Checks if Git is installed; if not, installs it automatically:
+
+```bash
+if ! command -v git &>/dev/null; then
+    echo "Installing Git..."
+    sudo apt update
+    sudo apt install -y git
+fi
+```
+
+---
+
+### 3. Clean old Docker remnants
+
+Removes previous Docker installations, images, and volumes to avoid conflicts:
+
+```bash
+sudo apt remove -y docker.io docker-compose ... || true
+sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker ...
+```
+
+---
+
+### 4. Install Docker
+
+Installs Docker CE and related tools:
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl
+...
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+```
+
+---
+
+### 5. Create Docker network
+
+```bash
+docker network create "$DOCKER_NET"
+```
+
+* Creates an isolated network so LlamaCPP and SearXNG can communicate.
+
+---
+
+### 6. Clone or update LlamaCPP repository
+
+```bash
+if [ -d "$LLAMA_FOLDER" ]; then
+    git pull
+else
+    git clone "$LLAMA_REPO"
+fi
+```
+
+* Ensures the latest version of LlamaCPP is available locally.
+
+---
+
+### 7. Model download
+
+Prompts the user to download the LLaMA 3.2 1B model if it’s not already present:
+
+```bash
+read -p "Do you want to download LLaMA 3.2 1B model now? (Y/N) " -r MODEL_CHOICE
+```
+
+* Alternatively, the user can manually place the model file in the models folder.
+
+---
+
+### 8. Docker container persistence
+
+Optional: keep containers running after system reboot:
+
+```bash
+read -p "Do you want the Docker containers to persist on reboot? (Y/N) " -r PERSIST_INPUT
+```
+
+---
+
+### 9. Build and run LlamaCPP container
+
+```bash
+docker build --no-cache -t llamacpp-api "$LLAMA_FOLDER"
+docker run -d $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
+```
+
+* Waits until the container responds to confirm it’s running properly.
+
+---
+
+### 10. Create SearXNG folder and settings
+
+```bash
+mkdir -p "$SEARX_FOLDER"
+cat > "$SEARX_SETTINGS" <<'EOF'
+...
+EOF
+```
+
+* Generates a default configuration for SearXNG, with engines enabled and bot detection disabled.
+
+---
+
+### 11. Run SearXNG container
+
+```bash
+docker run -d $PERSIST_FLAG --network "$DOCKER_NET" --name searxng -p $SEARX_PORT:8080 \
+    -v searxng-config:/etc/searxng searxng/searxng:latest
+docker cp "$SEARX_SETTINGS" searxng:/etc/searxng/settings.yml
+```
+
+* Ensures LlamaCPP can query SearXNG from inside the container.
+
+---
+
+### 12. Connectivity checks
+
+* Tests SearXNG from the host:
+
+```bash
+curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK"
+```
+
+* Tests LlamaCPP container can reach SearXNG:
+
+```bash
+docker exec llamacpp-api bash -c "curl -s http://searxng:8080/search?q=test"
+```
+
+---
+
+### 13. End-to-end API tests
+
+* Tests LlamaCPP and SearXNG separately and together:
+
+```bash
+curl -s "http://localhost:$SEARX_PORT/search?q=latest+news&format=json" | jq
+curl -s "${API_URL}$(echo Hello world | sed 's/ /+/g')" | jq
+python3 test.py
+```
+
+---
+
+### 14. Friendly closing message
+
+Displays success message and social links:
+
+```bash
+echo "Setup complete. Your LlamaCPP + SearXNG environment is running."
+echo "LinkedIn:  https://www.linkedin.com/in/giancarlo-bellino-02a2292a5/"
+echo "Instagram: https://www.instagram.com/omgitsgb/"
+echo "YouTube:   https://www.youtube.com/@OMGITSGB"
+echo "GitHub:    https://github.com/omgitsgb/llamacpp-searx-installer-linux/commits?author=omgitsgb"
+```
 
 ---
 
 ## Usage
 
-### LlamaCPP API
-
-The LlamaCPP FastAPI server runs on port `8000`.
-
-Example request:
+1. Make the installer executable:
 
 ```bash
-curl -s -G "http://localhost:8000/generate" --data-urlencode "prompt=What is the latest news today?" | jq
+chmod +x installer.sh
 ```
 
-- Automatically triggers SearXNG search if prompt contains keywords like:  
-  `news`, `latest`, `update`, `headlines`.
-- Returns JSON object with:  
-  - `prompt`
-  - `search_triggered` (bool)
-  - `search_results` (array)
-  - `output` (generated text)
-
-### SearXNG
-
-- Runs on port `8080`.
-- Accessible inside Docker network at `http://searxng:8080`.
-- Supports JSON and HTML results.
-- Example query:
+2. Run the script:
 
 ```bash
-curl -s "http://localhost:8080/search?q=latest+news&format=json" | jq
+./installer.sh
 ```
+
+3. Access services:
+
+   * **LlamaCPP API:** `http://localhost:8000`
+   * **SearXNG:** `http://localhost:8080`
+
+4. Use `test.py` to trigger LlamaCPP with SearXNG search integration.
 
 ---
 
-## File Structure
-
-```bash
-llamacpp-searx-installer-linux/
-├─ installer.sh          # Main installer script
-├─ models/               # LLaMA GGUF models
-├─ llama_api.py          # FastAPI LlamaCPP server
-├─ README.md             # This file
-```
-
----
-
-## Docker Network
-
-Both containers share a dedicated Docker network:
-
-- Network name: `llama-searx-net`
-- Allows LlamaCPP to reach SearXNG via container name `searxng:8080`.
-
----
-
-## End-to-End API Tests
-
-`installer.sh` includes three test cases:
-
-1. **SearXNG search only**
-
-```bash
-curl -s "http://localhost:8080/search?q=latest+news&format=json" | jq
-```
-
-2. **LLaMA without search trigger**
-
-```bash
-curl -s "http://localhost:8000/generate?prompt=Hello+world" | jq
-```
-
-3. **LLaMA with search trigger**
-
-```bash
-curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
-```
-
----
 
 ## Troubleshooting
 
