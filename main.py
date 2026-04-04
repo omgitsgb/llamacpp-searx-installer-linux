@@ -14,13 +14,17 @@ if not gguf_models:
     raise FileNotFoundError(f"No .gguf model found in {MODEL_DIR}")
 
 MODEL_PATH = os.path.join(MODEL_DIR, gguf_models[0])
+CONTEXT_SIZE = 4096
+MAX_TOKENS = 512
 
 SEARCH_TRIGGERS = ["news", "latest", "current", "update", "headlines"]
-SEARX_URL = "http://searxng:8080/search"  # container DNS on same network
+SEARX_URL = "http://searxng:8080/search"
 
+# ---------------------------
+# App & Logging
+# ---------------------------
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
-
 llm = None  # Will be loaded on startup
 
 # ---------------------------
@@ -30,7 +34,7 @@ llm = None  # Will be loaded on startup
 def load_model():
     global llm
     logging.info(f"Loading model from {MODEL_PATH} ...")
-    llm = Llama(model_path=MODEL_PATH, n_ctx=4096)
+    llm = Llama(model_path=MODEL_PATH, n_ctx=CONTEXT_SIZE)
     logging.info("✅ Model loaded successfully")
 
 # ---------------------------
@@ -67,7 +71,6 @@ def generate(prompt: str):
 
     logging.info(f"Prompt: {prompt}")
     try:
-        # Check if search should trigger
         search_triggered = any(word.lower() in prompt.lower() for word in SEARCH_TRIGGERS)
         search_results = searx_search(prompt) if search_triggered else []
 
@@ -80,8 +83,7 @@ def generate(prompt: str):
         else:
             full_prompt = prompt
 
-        # Generate response
-        output = llm(full_prompt, max_tokens=512)  # reduce tokens for testing
+        output = llm(full_prompt, max_tokens=MAX_TOKENS)
         return {
             "prompt": prompt,
             "search_triggered": search_triggered,
