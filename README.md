@@ -231,7 +231,7 @@ docker network create llama-searx-net
 docker volume rm searxng-config 2>/dev/null
 docker volume create searxng-config
 docker pull searxng/searxng:latest
-cd /home/gb/llamacpp-searx-installer-linux
+cd C:\path\to\llamacpp-searx-installer-linux
 docker build --pull -t llamacpp-api .
 docker run -d --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng --restart unless-stopped searxng/searxng:latest
 docker cp /home/gb/searxng/settings.yml searxng:/etc/searxng
