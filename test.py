@@ -19,7 +19,7 @@ test_prompts = [
 for prompt in test_prompts:
     try:
         # Use GET with URL-encoded prompt
-        response = requests.get(LLAMA_API_URL, params={"prompt": prompt}, timeout=10)
+        response = requests.get(LLAMA_API_URL, params={"prompt": prompt}, timeout=40)
         response.raise_for_status()
         data = response.json()
 
