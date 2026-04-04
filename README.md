@@ -29,10 +29,10 @@ The setup allows LlamaCPP to dynamically query SearXNG for real-time search resu
 
 Clone the repository:
 
-[[[bash
+[bash
 git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
 cd llamacpp-searx-installer-linux
-]]]
+]
 
 Run the installer:
 
