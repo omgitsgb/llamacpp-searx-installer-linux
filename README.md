@@ -1,3 +1,4 @@
+```bash
 # LlamaCPP + SearXNG Networked Installer
 
 This repository provides a **full automated setup** for running **LlamaCPP** with **SearXNG** in Docker on Linux.  
@@ -89,7 +90,6 @@ curl -s "http://localhost:8080/search?q=latest+news&format=json" | jq
 ## File Structure
 
 ```bash
-text
 llamacpp-searx-installer-linux/
 ├─ installer.sh          # Main installer script
 ├─ models/               # LLaMA GGUF models
@@ -112,19 +112,19 @@ Both containers share a dedicated Docker network:
 
 `installer.sh` includes three test cases:
 
-1. **SearXNG search only**:
+1. **SearXNG search only**
 
 ```bash
 curl -s "http://localhost:8080/search?q=latest+news&format=json" | jq
 ```
 
-2. **LLaMA without search trigger**:
+2. **LLaMA without search trigger**
 
 ```bash
 curl -s "http://localhost:8000/generate?prompt=Hello+world" | jq
 ```
 
-3. **LLaMA with search trigger**:
+3. **LLaMA with search trigger**
 
 ```bash
 curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
@@ -146,9 +146,106 @@ docker logs searxng
 
 ---
 
+## Health & Connectivity Tests
 
-## Notes
+### 1️⃣ List Docker containers
 
-- Model: `llama-3.2-1b-instruct-q8_0.gguf` from HuggingFace.
-- End-to-end tests are included in `installer.sh` and can be rerun anytime.
-- Both containers are connected internally via Docker network for seamless API calls.
+```bash
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+```
+
+### 2️⃣ Test LlamaCPP health
+
+```bash
+curl -s --max-time 5 http://localhost:8000/health >/dev/null && echo "✅ LlamaCPP localhost OK" || echo "❌ LlamaCPP localhost FAIL"
+```
+
+### 3️⃣ Test SearXNG health
+
+```bash
+curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "✅ SearXNG localhost OK" || echo "❌ SearXNG localhost FAIL"
+```
+
+### 4️⃣ Test LlamaCPP → SearXNG connectivity
+
+```bash
+docker exec llamacpp-api bash -c "apt-get update >/dev/null 2>&1 && apt-get install -y curl >/dev/null 2>&1 && curl -s http://searxng:8080/search?q=test >/dev/null" && echo "✅ LlamaCPP can reach SearXNG" || echo "❌ LlamaCPP cannot reach SearXNG"
+```
+
+### 5️⃣ Test sample prompts
+
+```bash
+curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
+curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq
+curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
+```
+
+---
+
+## Fix & Remount Safely After Reboot
+
+Stop and remove old containers:
+
+```bash
+docker stop llamacpp-api searxng
+docker rm llamacpp-api searxng
+```
+
+Ensure the host folder and settings file exist and are readable:
+
+```bash
+ls -la ~/searxng
+cat ~/searxng/settings.yml
+```
+
+Restart containers with proper mounts:
+
+```bash
+docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
+    -v "$HOME/searxng/settings.yml":/etc/searxng/settings.yml:ro searxng/searxng:latest
+
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+```
+
+Test connectivity from LlamaCPP container:
+
+```bash
+docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
+```
+
+> You should now see JSON results. ✅
+
+---
+
+## Stability Recommendation
+
+Bind mounts like `-v ~/searxng/settings.yml:/etc/searxng/settings.yml` can break on restarts.  
+Use a Docker volume for `/etc/searxng` instead:
+
+```bash
+docker volume create searxng-config
+
+docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
+    -v searxng-config:/etc/searxng searxng/searxng:latest
+
+docker cp ~/searxng/settings.yml searxng:/etc/searxng/settings.yml
+```
+
+Volumes persist across reboots and avoid host path issues.
+
+---
+
+## Sample Prompt Tests
+
+```bash
+curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
+curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq
+curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
+```
+
+> **Breakdown**:  
+> - `http://localhost:8000/generate` → LlamaCPP endpoint  
+> - `?prompt=...` → prompt text (spaces replaced with `+` or URL-encoded `%20`)  
+> - `-s` → silent mode  
+> - `| jq` → optional, formats JSON nicely
+```
