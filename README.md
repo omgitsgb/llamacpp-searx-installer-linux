@@ -88,7 +88,8 @@ curl -s "http://localhost:8080/search?q=latest+news&format=json" | jq
 
 ## File Structure
 
-[[[text
+```bash
+text
 llamacpp-searx-installer-linux/
 ├─ installer.sh          # Main installer script
 ├─ models/               # LLaMA GGUF models
