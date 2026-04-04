@@ -223,18 +223,19 @@ Bind mounts like `-v ~/searxng/settings.yml:/etc/searxng/settings.yml` can break
 Use a Docker volume for `/etc/searxng` instead:
 
 ```bash
-docker stop llamacpp-api searxng
-
-docker rm llamacpp-api searxng
-
+docker stop llamacpp-api searxng 2>/dev/null
+docker rm llamacpp-api searxng 2>/dev/null
+docker rmi -f llamacpp-api searxng/searxng:latest 2>/dev/null
+docker network rm llama-searx-net 2>/dev/null
+docker network create llama-searx-net
+docker volume rm searxng-config 2>/dev/null
 docker volume create searxng-config
-
-docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
-    -v searxng-config:/etc/searxng searxng/searxng:latest
-
-docker cp ~/searxng/settings.yml searxng:/etc/searxng/settings.yml
-
-docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+docker pull searxng/searxng:latest
+cd /home/gb/llamacpp-searx-installer-linux
+docker build --pull -t llamacpp-api .
+docker run -d --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng --restart unless-stopped searxng/searxng:latest
+docker cp /home/gb/searxng/settings.yml searxng:/etc/searxng
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api --restart unless-stopped llamacpp-api
 
 ```
 
