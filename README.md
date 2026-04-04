@@ -1,4 +1,4 @@
-```bash
+
 # LlamaCPP + SearXNG Networked Installer
 
 This repository provides a **full automated setup** for running **LlamaCPP** with **SearXNG** in Docker on Linux.  
