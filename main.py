@@ -3,6 +3,7 @@ import logging
 import requests
 from fastapi import FastAPI, HTTPException
 from llama_cpp import Llama
+import subprocess
 
 # ---------------------------
 # Config
@@ -28,13 +29,25 @@ logging.basicConfig(level=logging.INFO)
 llm = None  # Will be loaded on startup
 
 # ---------------------------
+# Detect CUDA dynamically
+# ---------------------------
+def has_cuda():
+    try:
+        # Check if nvidia-smi exists and can see GPUs
+        result = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
+
+# ---------------------------
 # Startup Event to load Llama
 # ---------------------------
 @app.on_event("startup")
 def load_model():
     global llm
-    logging.info(f"Loading model from {MODEL_PATH} ...")
-    llm = Llama(model_path=MODEL_PATH, n_ctx=CONTEXT_SIZE)
+    use_cuda = has_cuda()
+    logging.info(f"{'CUDA detected — using GPU' if use_cuda else 'CUDA not detected — using CPU'}")
+    llm = Llama(model_path=MODEL_PATH, n_ctx=CONTEXT_SIZE, use_cuda=use_cuda)
     logging.info("✅ Model loaded successfully")
 
 # ---------------------------
@@ -42,8 +55,19 @@ def load_model():
 # ---------------------------
 def searx_search(query):
     try:
-        resp = requests.get(SEARX_URL, params={"q": query, "format": "json"}, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        }
+
+        resp = requests.get(
+            SEARX_URL,
+            params={"q": query, "format": "json"},
+            headers=headers,
+            timeout=10
+        )
+
         resp.raise_for_status()
+
         results = []
         for r in resp.json().get("results", []):
             results.append({
@@ -51,11 +75,12 @@ def searx_search(query):
                 "content": (r.get("content") or r.get("description") or "").strip(),
                 "url": r.get("url", "").strip()
             })
+
         return results[:5]
+
     except Exception as e:
         logging.error(f"SearXNG error: {e}")
         return []
-
 # ---------------------------
 # Routes
 # ---------------------------
