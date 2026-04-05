@@ -609,6 +609,59 @@ curl -v http://searxng:8080/search?q=test
 ```
 
 ---
+Here’s the **full updated persistence & reboot-safe section** with **force rebuild + auto-restart** included:
+
+---
+
+## 🔄 Persistence & Reboot Safety
+
+**Stop and remove old containers, network, and volume (if any):**
+
+```bash
+docker stop llamacpp-api searxng 2>/dev/null
+docker rm -f llamacpp-api searxng 2>/dev/null
+docker network rm llama-searx-net 2>/dev/null
+docker volume rm searxng-config 2>/dev/null
+```
+
+**Recreate network and volume:**
+
+```bash
+docker network create llama-searx-net
+docker volume create searxng-config
+```
+
+**Rebuild LlamaCPP Docker image (CPU or GPU):**
+
+```bash
+cd ~/llamacpp-searx/llamacpp
+# CPU:
+docker build -f Dockerfile.cpu --no-cache -t llamacpp-api .
+# GPU:
+# docker build -f Dockerfile.gpu --no-cache -t llamacpp-api .
+```
+
+**Run containers with auto-restart:**
+
+```bash
+# LlamaCPP container
+# CPU:
+docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+# GPU:
+# docker run -d --gpus all --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+
+# SearXNG container
+docker run -d --restart unless-stopped --network llama-searx-net -p 8080:8080 -v ~/llamacpp-searx/searxng:/etc/searxng --name searxng searxng/searxng:latest
+```
+
+✅ This ensures:
+
+* Old containers are removed
+* Docker network/volume is recreated
+* LlamaCPP image is rebuilt from scratch
+* Both containers auto-restart on reboot
+
+---
 
 ## 🔄 Rebuild Notes
 
