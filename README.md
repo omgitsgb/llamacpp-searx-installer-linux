@@ -672,83 +672,82 @@ curl -v http://searxng:8080/search?q=test
 *Step inside the LlamaCPP container to test connectivity interactively.*
 
 ✅ Helps identify DNS/network issues between containers.
+Exactly — for a clean README, **Option B isn’t really necessary**. You can just keep **Option A** (the persistent Docker volume setup) and then let the user **choose between `--restart unless-stopped` or no restart** on the **same commands** with a simple comment.
+
+Here’s how the README could look simplified:
+
+````markdown
+# LlamaCPP + SearXNG Setup
+
+This guide covers running **LlamaCPP** with **SearXNG** in Docker, including options for persistence and reboot behavior.
 
 ---
 
-# ==================================================
-# 🔄 Persistence & Reboot Safety
-# ==================================================
+## 🔄 Persistence & Reboot Safety
 
-# ------------------------------
-# Option A – Recommended: Docker Volume (persistent, robust)
-# ------------------------------
-
-# Stop old containers and remove old network/volume (if any)
+**Stop old containers and remove old network/volume (if any):**
+```bash
 docker stop llamacpp-api searxng 2>/dev/null
 docker rm llamacpp-api searxng 2>/dev/null
 docker network rm llama-searx-net 2>/dev/null
 docker volume rm searxng-config 2>/dev/null
+````
 
-# Recreate network and volume
+**Recreate network and volume:**
+
+```bash
 docker network create llama-searx-net
 docker volume create searxng-config
+```
 
-# Build LlamaCPP container (latest code)
+**Build LlamaCPP container (latest code):**
+
+```bash
 cd $HOME/llamacpp-searx/llamacpp
 docker build --no-cache -t llamacpp-api .
 docker rm -f llamacpp-api 2>/dev/null
+```
 
-# Run LlamaCPP API
-# Option 1: Automatically restart on reboot
+**Run LlamaCPP API (choose restart behavior):**
+
+```bash
+# Automatically restart on reboot
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 
-# Option 2: Do NOT restart on reboot
+# OR do NOT restart on reboot
 # docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+```
 
-# Run SearXNG container using Docker volume
+**Run SearXNG container using Docker volume (choose restart behavior):**
+
+```bash
 docker rm -f searxng 2>/dev/null
 
-# Option 1: Automatically restart on reboot
+# Automatically restart on reboot
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
 
-# Option 2: Do NOT restart on reboot
+# OR do NOT restart on reboot
 # docker run -d --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
 
 # Copy local settings.yml into container
 docker cp $HOME/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/settings.yml
+```
 
-# Test connectivity
+**Test connectivity:**
+
+```bash
 curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?Quote+Sources" | jq
-# ✅ Works, persists across reboots, optionally restarts containers
+```
 
-# ------------------------------
-# Option B – Alternative: Bind Mount (quick test, not robust)
-# ------------------------------
+✅ Works, persists across reboots, optionally restarts containers.
 
-# Stop and remove containers
-docker stop llamacpp-api searxng 2>/dev/null
-docker rm llamacpp-api searxng 2>/dev/null
-docker network rm llama-searx-net 2>/dev/null
-docker volume rm searxng-config 2>/dev/null
+---
 
-# Recreate network and volume
-docker network create llama-searx-net
-docker volume create searxng-config
+## 🔄 Rebuild Notes
 
-# Run containers with bind mount (no automatic restart)
-docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
-    -v "$HOME/llamacpp-searx/searxng/settings.yml":/etc/searxng/settings.yml:ro python:3.11-slim tail -f /dev/null
+If you update your `main.py` or want to refresh the LlamaCPP image:
 
-docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
-
-# Test connectivity from LlamaCPP container
-curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?Quote+Sources" | jq
-# ✅ Works immediately, but may break after a host reboot
-
-# ------------------------------
-# Rebuild Notes
-# ------------------------------
-# If you update your main.py or want to refresh the LlamaCPP image:
+```bash
 cd $HOME/llamacpp-searx/llamacpp
 docker build --pull -t llamacpp-api .
 
@@ -756,16 +755,29 @@ docker build --pull -t llamacpp-api .
 docker stop llamacpp-api
 docker rm llamacpp-api
 
-# Option 1: Automatically restart on reboot
+# Automatically restart on reboot
 docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api --restart unless-stopped llamacpp-api
 
-# Option 2: Do NOT restart on reboot
+# OR do NOT restart on reboot
 # docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+```
 
-# ------------------------------
-# Sample Prompt Tests
-# ------------------------------
+---
+
+## 📝 Sample Prompt Tests
+
+```bash
 curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
 curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq
 curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
-# ✅ Returns JSON output from LlamaCPP, optionally using live SearXNG results
+```
+
+✅ Returns JSON output from LlamaCPP, optionally using live SearXNG results.
+
+```
+
+This keeps everything **simple, persistent, and flexible**, without confusing the user with a separate “quick test” option.  
+
+If you want, I can **also make a version with a single `RESTART=true/false` toggle at the top** so you **never have to comment/uncomment**—it chooses the correct Docker flags automatically. Do you want me to do that?
+```
+
