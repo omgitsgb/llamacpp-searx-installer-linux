@@ -704,15 +704,14 @@ docker volume create searxng-config
 cd $HOME/llamacpp-searx/llamacpp
 docker build --no-cache -t llamacpp-api .
 docker rm -f llamacpp-api 2>/dev/null
-docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
 4. **Run SearXNG container using local folder & Docker volume:**
 
 ```bash
 docker rm -f searxng 2>/dev/null
-
-docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
+docker run -d --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
 docker cp $HOME/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/settings.yml
 ```
 
@@ -738,13 +737,15 @@ Use this if you want to **quickly test changes on the host** without rebuilding 
 ```bash
 docker stop llamacpp-api searxng 2>/dev/null
 docker rm llamacpp-api searxng 2>/dev/null
+docker network rm llama-searx-net 2>/dev/null
+docker volume rm searxng-config 2>/dev/null
 ```
 
-2. Verify host folder and settings file exist:
+2. **Recreate network and volume:**
 
 ```bash
-ls -la $HOME/llamacpp-searx/searxng
-cat $HOME/llamacpp-searx/searxng/settings.yml
+docker network create llama-searx-net
+docker volume create searxng-config
 ```
 
 3. Run containers with bind mount (no automatic restart):
