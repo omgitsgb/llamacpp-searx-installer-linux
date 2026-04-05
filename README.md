@@ -23,7 +23,7 @@ The installer handles:
 * ✅ Friendly social links for support and community
 
 ---
-
+---
 ## Requirements
 
 * Linux (tested on Ubuntu 22.04+)
@@ -44,7 +44,7 @@ lsb_release -a      # Should print Ubuntu version info if installed
 sudo apt update
 sudo apt install -y curl git lsb-release ca-certificates gnupg
 ```
-
+---
 # USING INSTALLER
 
 ## 1. Install
