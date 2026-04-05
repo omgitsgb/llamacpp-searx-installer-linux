@@ -727,6 +727,8 @@ docker volume create searxng-config
 ```bash
 cd $HOME/llamacpp-searx/llamacpp
 docker build --no-cache -t llamacpp-api .
+docker rm -f llamacpp-api 2>/dev/null
+docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
 4. Run SearXNG container using local folder & Docker volume:
