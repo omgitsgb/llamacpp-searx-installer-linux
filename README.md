@@ -61,42 +61,18 @@ chmod +x llamacpp-searxng-installer-linux.sh
 
 ---
 
-## **Step 0: Prerequisites**
-
-Make sure you have:
-
-* Linux (Ubuntu 22.04+ recommended)
-* `curl` installed
-* Internet access
-* `sudo` privileges
-
-Check `curl` and `git`:
-
-```bash
-curl --version
-git --version
-```
-
-If missing, install them:
+Install dependencies if needed:
 
 ```bash
 sudo apt update
-sudo apt install -y curl git ca-certificates
-```
-
-## **Manual LlamaCPP + SearXNG Setup (Ubuntu 24.04)**
-
-### **1. Update system & install basics**
-
-```bash
-sudo apt update
-sudo apt upgrade -y
-sudo apt install -y git curl lsb-release ca-certificates gnupg
+sudo apt install -y curl git lsb-release ca-certificates gnupg
 ```
 
 ---
 
-### **2. Remove any old/broken Docker remnants**
+## ⚡ Step 1: Install Docker
+
+1. Remove old Docker remnants:
 
 ```bash
 sudo apt remove -y docker.io docker-compose docker-compose-plugin containerd runc
@@ -105,9 +81,7 @@ sudo apt-get autoremove -y
 sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/apt/keyrings/docker* /etc/apt/sources.list.d/docker*
 ```
 
----
-
-### **3. Add Docker GPG key & repository**
+2. Add Docker GPG key & repository:
 
 ```bash
 sudo mkdir -p /etc/apt/keyrings
@@ -118,16 +92,14 @@ UBUNTU_CODENAME=$(lsb_release -cs)
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $UBUNTU_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list
 ```
 
----
-
-### **4. Update package list & install Docker**
+3. Install Docker:
 
 ```bash
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
-**Test Docker:**
+4. Verify Docker:
 
 ```bash
 docker --version
@@ -136,92 +108,157 @@ sudo docker run hello-world
 
 ---
 
-### **5. Create Docker network**
-
-```bash
-docker network create llama-searx-net
-```
-
----
-
-### **6. Clone or update LlamaCPP repo**
-
-```bash
-cd $HOME
-git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
-# If already cloned, update:
-# cd llamacpp-searx-installer-linux
-# git pull
-```
-
----
-
-### **7. Prepare LLaMA model**
+## ⚡ Step 2: Prepare Project Folder & Files
 
 ```bash
 mkdir -p $HOME/llamacpp-searx-installer-linux/models
+cd $HOME/llamacpp-searx-installer-linux
+```
+
+### 1️⃣ Create `requirements.txt`
+
+```bash
+nano requirements.txt
+```
+
+Paste:
+
+```
+fastapi
+uvicorn[standard]
+llama-cpp-python
+requests
+```
+
+### 2️⃣ Create `main.py`
+
+```bash
+nano main.py
+```
+
+Paste the production-ready API code (included above). Save & exit.
+
+### 3️⃣ Create Dockerfile
+
+```bash
+nano Dockerfile
+```
+
+Paste:
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY main.py .
+COPY models ./models
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+---
+
+## ⚡ Step 3: Download Llama Model
+
+```bash
 cd $HOME/llamacpp-searx-installer-linux/models
-# Download model (replace MODEL_URL with the correct URL if needed)
 curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/llama-3.2-1b-instruct-q8_0.gguf
 ```
 
 ---
 
-### **8. Build LlamaCPP Docker image**
+## ⚡ Step 4: Build & Run LlamaCPP Container
 
 ```bash
 cd $HOME/llamacpp-searx-installer-linux
 docker build --no-cache -t llamacpp-api .
-```
-
----
-
-### **9. Run LlamaCPP container**
-
-```bash
 docker rm -f llamacpp-api 2>/dev/null
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
-
 ---
 
-### **10. Prepare SearXNG folder & settings**
+## ⚡ Step 5: Prepare & Run SearXNG
+
+1. **Create folder & `settings.yml`**
 
 ```bash
 mkdir -p $HOME/searxng
 nano $HOME/searxng/settings.yml
-# Paste this into settings.yml:
-# use_default_settings: true
-# general:
-#   debug: false
-#   instance_name: "SearXNG"
-# server:
-#   bind_address: "0.0.0.0"
-#   port: 8080
-#   secret_key: "mR7q4vF9sP2xZ8jWkL1uB0yT6cE3nA5"
-#   public_instance: false
-# engines:
-#   - name: duckduckgo
-#     disabled: false
-#   - name: google
-#     disabled: false
-#   - name: bing
-#     disabled: false
 ```
 
----
+Paste:
 
-### **11. Run SearXNG container**
+```yaml
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "SearXNG"
+
+search:
+  safe_search: 2
+  autocomplete: duckduckgo
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "mR7q4vF9sP2xZ8jWkL1uB0yT6cE3nA5"
+  public_instance: false
+
+limiter: false
+
+botdetection:
+  enabled: false
+
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: google
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: yahoo
+    disabled: false
+  - name: qwant
+    disabled: false
+  - name: ecosia
+    disabled: false
+  - name: yandex
+    disabled: false
+  - name: searxng
+    disabled: false
+```
+
+2. **Run SearXNG container**
 
 ```bash
-docker rm -f searxng 2>/dev/null
 docker volume create searxng-config
+docker rm -f searxng 2>/dev/null
+
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
 docker cp $HOME/searxng/settings.yml searxng:/etc/searxng/settings.yml
 ```
 
-**Check SearXNG:**
+3. **Verify**
 
 ```bash
 curl "http://localhost:8080/search?q=hello&format=json"
@@ -229,75 +266,21 @@ curl "http://localhost:8080/search?q=hello&format=json"
 
 ---
 
-### ✅ **12. Optional Tests**
+## 🧪 Step 6: Health & Connectivity Tests
 
-* Test LlamaCPP:
-
-```bash
-curl "http://localhost:8000/generate?prompt=Hello+world"
-```
-
-* Test container connectivity:
-
-```bash
-docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
-```
-
----
-
-## Usage
-
-1. Make the installer executable:
-
-```bash
-chmod +x installer.sh
-```
-
-2. Run the script:
-
-```bash
-./installer.sh
-```
-
-3. Access services:
-
-   * **LlamaCPP API:** `http://localhost:8000`
-   * **SearXNG:** `http://localhost:8080`
-
-4. Use `test.py` to trigger LlamaCPP with SearXNG search integration.
-
----
-
-
-## Troubleshooting
-
-- If containers fail to start, check logs:
-
-```bash
-docker logs llamacpp-api
-docker logs searxng
-```
-
-- If ports `8000` or `8080` are in use, either stop conflicting services or change `LLAMA_PORT` / `SEARX_PORT` in `installer.sh`.
-- Ensure your Linux user has permissions to run Docker without `sudo`.
-
----
-
-## Health & Connectivity Tests
-
-### 1️⃣ List Docker containers
+### 1️⃣ List running Docker containers
 
 ```bash
 docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 ```
 
-### 2️⃣ Test LlamaCPP health
+### 2️⃣ Test LlamaCPP API
 
 ```bash
 curl -s --max-time 5 http://localhost:8000/health >/dev/null && echo "✅ LlamaCPP localhost OK" || echo "❌ LlamaCPP localhost FAIL"
 ```
 
-### 3️⃣ Test SearXNG health
+### 3️⃣ Test SearXNG
 
 ```bash
 curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "✅ SearXNG localhost OK" || echo "❌ SearXNG localhost FAIL"
@@ -319,23 +302,95 @@ curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." 
 
 ---
 
-## Fix & Remount Safely After Reboot
+## 🔧 Troubleshooting
 
-Stop and remove old containers:
+```bash
+docker logs llamacpp-api
+docker logs searxng
+
+docker restart llamacpp-api searxng
+```
+
+
+Got it — you want the **persistent, robust Docker volume version** to be the main, “regular” setup, and the bind-mount method to be the “alternative” version for quick testing. I’ve also added **rebuild lines** so users can refresh the images if needed. Here's the rewritten section:
+
+---
+
+## 🔄 Persistence & Reboot Safety
+
+For LlamaCPP + SearXNG, we **recommend using Docker volumes** for persistent and robust setup.
+Bind mounts can be used as a quick alternative but may break after a reboot.
+
+---
+
+### **Option A – Recommended: Docker Volume (persistent, robust)**
+
+1. Stop old containers and remove old network/volume (if any):
+
+```bash
+docker stop llamacpp-api searxng 2>/dev/null
+docker rm llamacpp-api searxng 2>/dev/null
+docker network rm llama-searx-net 2>/dev/null
+docker volume rm searxng-config 2>/dev/null
+```
+
+2. Recreate network and volume:
+
+```bash
+docker network create llama-searx-net
+docker volume create searxng-config
+```
+
+3. Pull latest SearXNG image and rebuild LlamaCPP (in case of updates):
+
+```bash
+docker pull searxng/searxng:latest
+cd $HOME/llamacpp-searx-installer-linux
+docker build --pull -t llamacpp-api .
+```
+
+4. Run containers using Docker volume and automatic restart (`--restart unless-stopped`):
+
+```bash
+docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
+    -v searxng-config:/etc/searxng --restart unless-stopped searxng/searxng:latest
+
+docker cp ~/searxng/settings.yml searxng:/etc/searxng
+
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api \
+    --restart unless-stopped llamacpp-api
+```
+
+5. Test connectivity:
+
+```bash
+docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
+```
+
+> ✅ Should return JSON results.
+> This setup **persists across reboots** and automatically restarts containers.
+
+---
+
+### **Option B – Alternative: Bind Mount (quick test, not robust)**
+
+Use this if you want to quickly test changes on the host without rebuilding the volume.
+
+1. Stop and remove containers:
 
 ```bash
 docker stop llamacpp-api searxng
 docker rm llamacpp-api searxng
 ```
 
-Ensure the host folder and settings file exist and are readable:
+2. Verify host folder and settings file exist:
 
 ```bash
 ls -la ~/searxng
 cat ~/searxng/settings.yml
 ```
 
-Restart containers with proper mounts:
+3. Run containers with bind mount (no automatic restart):
 
 ```bash
 docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
@@ -344,47 +399,41 @@ docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
 docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
-Test connectivity from LlamaCPP container:
+4. Test connectivity from LlamaCPP container:
 
 ```bash
 docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
 ```
 
-> You should now see JSON results. ✅
+> ✅ Works immediately, but may **break after a host reboot**.
 
 ---
 
-## Option B – Using Docker volume (recommended, persistent across reboots): Stability Recommendation
+### **Rebuild Notes**
 
-Bind mounts like `-v ~/searxng/settings.yml:/etc/searxng/settings.yml` can break on restarts.  
-Use a Docker volume for `/etc/searxng` instead:
+If you update your `main.py` or want to refresh the images:
 
 ```bash
-docker stop llamacpp-api searxng 2>/dev/null
-docker rm llamacpp-api searxng 2>/dev/null
-docker rmi -f llamacpp-api searxng/searxng:latest 2>/dev/null
-docker network rm llama-searx-net 2>/dev/null
-docker network create llama-searx-net
-docker volume rm searxng-config 2>/dev/null
-docker volume create searxng-config
-docker pull searxng/searxng:latest
-cd C:\path\to\llamacpp-searx-installer-linux
+cd $HOME/llamacpp-searx-installer-linux
 docker build --pull -t llamacpp-api .
-docker run -d --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng --restart unless-stopped searxng/searxng:latest
-docker cp /home/gb/searxng/settings.yml searxng:/etc/searxng
+
+# Optional: restart the container
+docker stop llamacpp-api
+docker rm llamacpp-api
 docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api --restart unless-stopped llamacpp-api
-
 ```
-
-Volumes persist across reboots and avoid host path issues.
 
 ---
 
-## Sample Prompt Tests
+### **Sample Prompt Tests**
 
 ```bash
 curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
 curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq
 curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
 ```
+
+> Returns JSON output from LlamaCPP, optionally using live SearXNG results.
+
+---
 
