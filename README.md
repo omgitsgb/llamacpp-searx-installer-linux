@@ -485,16 +485,90 @@ curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." 
 
 ---
 
-## 🔧 Troubleshooting
+---
+
+## 🛠️ Troubleshooting & Connectivity Checks
+
+### **1️⃣ List all running Docker containers**
 
 ```bash
-docker logs llamacpp-api
-docker logs searxng
-
-docker restart llamacpp-api searxng
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 ```
 
+*Shows which containers are running, their image, status, and exposed ports.*
+
+✅ Confirms your LlamaCPP and SearXNG containers are up.
+
 ---
+
+### **2️⃣ Check Docker network**
+
+```bash
+docker network inspect llama-searx-net
+```
+
+*Shows all containers attached to the `llama-searx-net` network and their IPs.*
+
+✅ Confirms that LlamaCPP can “see” SearXNG inside the Docker network.
+
+---
+
+### **3️⃣ Test if LlamaCPP container can reach SearXNG**
+
+```bash
+docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
+```
+
+*This runs `curl` inside the LlamaCPP container to query SearXNG by container name.*
+
+* If you see JSON results → ✅ Connectivity OK
+* If you see an error → ❌ Containers cannot communicate (check network)
+
+---
+
+### **4️⃣ Check ports on the host machine**
+
+```bash
+ss -tulnp | grep -E '8000|8080'
+```
+
+*Shows which services are listening on ports 8000 (LlamaCPP) and 8080 (SearXNG).*
+
+✅ Confirms the APIs are exposed to your host machine.
+
+---
+
+### **5️⃣ Test API endpoints from host**
+
+```bash
+curl -s "http://localhost:8000/"
+curl -s "http://localhost:8080/search?q=hello&format=json"
+```
+
+* First command: should return LlamaCPP API info
+* Second command: should return JSON search results from SearXNG
+
+✅ Confirms the services are reachable from outside Docker.
+
+---
+
+### **6️⃣ Debug LlamaCPP → SearXNG connection (optional)**
+
+If LlamaCPP cannot reach SearXNG:
+
+```bash
+docker exec -it llamacpp-api bash
+apt-get update
+apt-get install -y curl
+curl -v http://searxng:8080/search?q=test
+```
+
+*Step inside the LlamaCPP container to test connectivity interactively.*
+
+✅ Helps identify DNS/network issues between containers.
+
+---
+
 
 ## 🔄 Persistence & Reboot Safety
 
