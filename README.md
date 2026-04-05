@@ -494,9 +494,6 @@ docker logs searxng
 docker restart llamacpp-api searxng
 ```
 
-
-Got it — you want the **persistent, robust Docker volume version** to be the main, “regular” setup, and the bind-mount method to be the “alternative” version for quick testing. I’ve also added **rebuild lines** so users can refresh the images if needed. Here's the rewritten section:
-
 ---
 
 ## 🔄 Persistence & Reboot Safety
