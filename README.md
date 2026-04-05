@@ -669,18 +669,6 @@ apt-get install -y curl
 curl -v http://searxng:8080/search?q=test
 ```
 
-*Step inside the LlamaCPP container to test connectivity interactively.*
-
-✅ Helps identify DNS/network issues between containers.
-Exactly — for a clean README, **Option B isn’t really necessary**. You can just keep **Option A** (the persistent Docker volume setup) and then let the user **choose between `--restart unless-stopped` or no restart** on the **same commands** with a simple comment.
-
-Here’s how the README could look simplified:
-
-````markdown
-# LlamaCPP + SearXNG Setup
-
-This guide covers running **LlamaCPP** with **SearXNG** in Docker, including options for persistence and reboot behavior.
-
 ---
 
 ## 🔄 Persistence & Reboot Safety
@@ -729,8 +717,6 @@ docker run -d --restart unless-stopped --network llama-searx-net --name searxng 
 # OR do NOT restart on reboot
 # docker run -d --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
 
-# Copy local settings.yml into container
-docker cp $HOME/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/settings.yml
 ```
 
 **Test connectivity:**
@@ -747,19 +733,18 @@ curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?Quo
 
 If you update your `main.py` or want to refresh the LlamaCPP image:
 
-```bash
+```base
 cd $HOME/llamacpp-searx/llamacpp
-docker build --pull -t llamacpp-api .
 
-# Optional: restart the container
-docker stop llamacpp-api
-docker rm llamacpp-api
+# Rebuild image from scratch (no cache)
+docker build --no-cache -t llamacpp-api .
 
-# Automatically restart on reboot
-docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api --restart unless-stopped llamacpp-api
+# Remove old container if it exists
+docker rm -f llamacpp-api 2>/dev/null
 
-# OR do NOT restart on reboot
-# docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+# Run the new container
+# Automatically restarts on reboot
+docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
 ---
@@ -774,10 +759,4 @@ curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." 
 
 ✅ Returns JSON output from LlamaCPP, optionally using live SearXNG results.
 
-```
-
-This keeps everything **simple, persistent, and flexible**, without confusing the user with a separate “quick test” option.  
-
-If you want, I can **also make a version with a single `RESTART=true/false` toggle at the top** so you **never have to comment/uncomment**—it chooses the correct Docker flags automatically. Do you want me to do that?
-```
 
