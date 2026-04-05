@@ -284,11 +284,14 @@ Got it — here’s your section rewritten so everything reflects your **new fol
 ### 3️⃣ Create Dockerfile
 
 ```bash
-nano Dockerfile
+nano Dockerfile.cpu
 ```
 ### CPU Version
-Paste:
 
+```bash
+nano Dockerfile.cpu
+```
+Paste:
 ```dockerfile.cpu
 # Dockerfile.cpu
 FROM python:3.11-slim
@@ -333,8 +336,10 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 ### GPU Version
+```bash
+nano Dockerfile.gpu
+```
 Paste:
-
 ```dockerfile.gpu
 # Dockerfile.gpu
 FROM nvidia/cuda:13.1.1-runtime-ubuntu22.04
