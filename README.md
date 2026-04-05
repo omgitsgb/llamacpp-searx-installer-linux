@@ -69,9 +69,10 @@ chmod +x llamacpp-searxng-installer-linux.sh
 ---
 
 
-
 ---
-# MANUEL SETUP
+
+# MANUAL SETUP
+
 ## ⚡ Step 1: Install Docker
 
 1. Remove old Docker remnants:
@@ -110,11 +111,12 @@ sudo docker run hello-world
 
 ---
 
-## ⚡ Step 2: Prepare Project Folder & Files
+## ⚡ Step 2: Prepare Project Folders & Files
 
 ```bash
-mkdir -p $HOME/llamacpp-searx-installer-linux/models
-cd $HOME/llamacpp-searx-installer-linux
+mkdir -p $HOME/llamacpp-searx/llamacpp/models
+mkdir -p $HOME/llamacpp-searx/searxng
+cd $HOME/llamacpp-searx/llamacpp
 ```
 
 ### 1️⃣ Create `requirements.txt`
@@ -131,6 +133,7 @@ uvicorn[standard]
 llama-cpp-python
 requests
 ```
+
 
 ### 2️⃣ Create `main.py`
 
@@ -321,7 +324,9 @@ def generate(prompt: str):
         logging.error(f"Error in /generate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 ```
+Got it — here’s your section rewritten so everything reflects your **new folder structure under `$HOME/llamacpp-searx`** instead of the old paths:
 
+---
 
 ### 3️⃣ Create Dockerfile
 
@@ -361,7 +366,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ## ⚡ Step 3: Download Llama Model
 
 ```bash
-cd $HOME/llamacpp-searx-installer-linux/models
+cd $HOME/llamacpp-searx/llamacpp/models
 curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/llama-3.2-1b-instruct-q8_0.gguf
 ```
 
@@ -370,7 +375,7 @@ curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF
 ## ⚡ Step 4: Build & Run LlamaCPP Container
 
 ```bash
-cd $HOME/llamacpp-searx-installer-linux
+cd $HOME/llamacpp-searx/llamacpp
 docker build --no-cache -t llamacpp-api .
 docker rm -f llamacpp-api 2>/dev/null
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
@@ -383,8 +388,8 @@ docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --
 1. **Create folder & `settings.yml`**
 
 ```bash
-mkdir -p $HOME/searxng
-nano $HOME/searxng/settings.yml
+mkdir -p $HOME/llamacpp-searx/searxng
+nano $HOME/llamacpp-searx/searxng/settings.yml
 ```
 
 Paste:
@@ -440,7 +445,7 @@ docker volume create searxng-config
 docker rm -f searxng 2>/dev/null
 
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
-docker cp $HOME/searxng/settings.yml searxng:/etc/searxng/settings.yml
+docker cp $HOME/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/settings.yml
 ```
 
 3. **Verify**
@@ -450,6 +455,9 @@ curl "http://localhost:8080/search?q=hello&format=json"
 ```
 
 ---
+
+✅ Now **all paths** are correctly using `$HOME/llamacpp-searx/llamacpp` and `$HOME/llamacpp-searx/searxng`.
+
 
 ## 🧪 Step 6: Health & Connectivity Tests
 
