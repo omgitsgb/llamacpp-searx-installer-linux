@@ -485,6 +485,95 @@ curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." 
 
 ---
 
+
+Perfect — we can make a dedicated section for `test.py` in your manual or README, fully commented and beginner-friendly, showing how it simplifies testing the LlamaCPP API. Here’s a fully explained version:
+
+---
+
+## 🧪 Test Script: `test.py`
+
+This small Python script lets you **quickly test your LlamaCPP API** without manually using `curl` or hitting the endpoints one by one.
+
+You just run it after your containers are up, and it will:
+
+* Send prompts to the API
+* Automatically check if a search was triggered
+* Print the returned search results and generated output
+
+---
+
+### **Contents of `test.py`**
+
+```python
+import requests  # For sending HTTP requests to the API
+import json      # For formatting and handling JSON responses
+
+# ---------------------------
+# Configuration
+# ---------------------------
+LLAMA_API_URL = "http://localhost:8000/generate"  # Update if running on a different host/port
+
+# Example prompts to test
+test_prompts = [
+    "What is the latest news today?",
+    "Summarize the top headlines in technology.",
+    "Tell me a fun fact about space."
+]
+
+# ---------------------------
+# Run Tests
+# ---------------------------
+for prompt in test_prompts:
+    try:
+        # Send a GET request with URL-encoded prompt
+        response = requests.get(LLAMA_API_URL, params={"prompt": prompt}, timeout=40)
+        
+        # Raise an error if the HTTP request fails (non-2xx response)
+        response.raise_for_status()
+        
+        # Convert JSON response into a Python dictionary
+        data = response.json()
+
+        # ---------------------------
+        # Display results nicely
+        # ---------------------------
+        print("\n" + "="*40)
+        print(f"Prompt: {prompt}")  # Show the original prompt
+        print("Search Triggered:", data.get("search_triggered"))  # Did the script trigger a SearXNG search?
+        print("Search Results:", [r['title'] for r in data.get("search_results", [])])  # Titles only
+        print("Generated Output:\n", data.get("output"))  # LlamaCPP output
+        print("="*40 + "\n")
+
+    except Exception as e:
+        # Print any errors clearly
+        print(f"Error with prompt '{prompt}': {e}")
+```
+
+---
+
+### **How it works**
+
+1. **Send prompts to your API** – The script loops over `test_prompts` and sends each one to `http://localhost:8000/generate`.
+2. **Check for SearXNG integration** – If the prompt triggers a search (`news`, `latest`, etc.), it prints whether search results were used.
+3. **See the output** – Prints LlamaCPP’s generated text, so you can quickly verify the AI is working.
+4. **Handle errors automatically** – Any network or API errors are caught and displayed clearly.
+
+---
+
+### **Run the test**
+
+```bash
+python3 test.py
+```
+
+* Works **immediately** after your containers are up.
+* No manual `curl` calls needed.
+* Great for validating LlamaCPP + SearXNG integration in one place. ✅
+
+---
+
+
+
 ---
 
 ## 🛠️ Troubleshooting & Connectivity Checks
