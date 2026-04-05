@@ -23,7 +23,7 @@ The installer handles:
 * ✅ Friendly social links for support and community
 
 ---
----
+
 ## Requirements
 
 * Linux (tested on Ubuntu 22.04+)
