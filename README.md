@@ -731,7 +731,7 @@ curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?Quo
 
 ## 🔄 Rebuild Notes
 
-If you update your `main.py` or replace the 'model', and want to refresh the LlamaCPP image:
+If you update your `main.py` or replace the model, and want to refresh the LlamaCPP image:
 
 ```base
 cd $HOME/llamacpp-searx/llamacpp
