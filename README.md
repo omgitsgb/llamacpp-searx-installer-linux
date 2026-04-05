@@ -73,9 +73,11 @@ chmod +x llamacpp-searxng-installer-linux.sh
 
 # MANUAL SETUP
 
-## ⚡ Step 1: Install Docker
+---
 
-1. Remove old Docker remnants:
+## Step 1: Install Docker
+
+**1️⃣ Remove old Docker remnants (if any):**
 
 ```bash
 sudo apt remove -y docker.io docker-compose docker-compose-plugin containerd runc
@@ -84,7 +86,7 @@ sudo apt-get autoremove -y
 sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/apt/keyrings/docker* /etc/apt/sources.list.d/docker*
 ```
 
-2. Add Docker GPG key & repository:
+**2️⃣ Add Docker GPG key & repository:**
 
 ```bash
 sudo mkdir -p /etc/apt/keyrings
@@ -95,19 +97,31 @@ UBUNTU_CODENAME=$(lsb_release -cs)
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $UBUNTU_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list
 ```
 
-3. Install Docker:
+**3️⃣ Install Docker Engine & Compose Plugin:**
 
 ```bash
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
-4. Verify Docker:
+**4️⃣ Verify Docker installation:**
 
 ```bash
 docker --version
 sudo docker run hello-world
 ```
+
+---
+
+## Step 2: Create Docker Network
+
+**Create a dedicated network for LlamaCPP + SearXNG:**
+
+```bash
+docker network inspect llama-searx-net 2>/dev/null || docker network create llama-searx-net
+```
+
+✅ This ensures your containers can communicate using container names (`llamacpp-api` ↔ `searxng`) and avoids conflicts with other Docker projects.
 
 ---
 
