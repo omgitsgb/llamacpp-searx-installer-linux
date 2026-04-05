@@ -2,18 +2,18 @@
 set -e
 
 # ==================================================
-# LlamaCPP + SearXNG Full Installer for Linux (Networked)
+# LlamaCPP + SearXNG Full Installer for Linux (Unified Folder)
 # ==================================================
 
 # --------------------------
 # Configuration
 # --------------------------
-LLAMA_REPO="https://github.com/omgitsgb/llamacpp-searx-installer-linux.git"
-LLAMA_FOLDER="llamacpp-searx-installer-linux"
+INSTALL_FOLDER="$HOME/llamacpp-searx"
+LLAMA_FOLDER="$INSTALL_FOLDER/llamacpp"
+SEARX_FOLDER="$INSTALL_FOLDER/searxng"
 MODEL="llama-3.2-1b-instruct-q8_0.gguf"
 MODEL_URL="https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/$MODEL"
 
-SEARX_FOLDER="$HOME/searxng"
 SEARX_SETTINGS="$SEARX_FOLDER/settings.yml"
 SEARX_PORT=8080
 LLAMA_PORT=8000
@@ -66,6 +66,7 @@ fi
 # --------------------------
 # 5. Clone or update LlamaCPP repo
 # --------------------------
+mkdir -p "$INSTALL_FOLDER"
 if [ -d "$LLAMA_FOLDER" ]; then
     echo "Repo exists, pulling latest changes..."
     cd "$LLAMA_FOLDER"
@@ -73,11 +74,11 @@ if [ -d "$LLAMA_FOLDER" ]; then
     cd ..
 else
     echo "Cloning repository..."
-    git clone "$LLAMA_REPO"
+    git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git "$LLAMA_FOLDER"
 fi
 
 # --------------------------
-# 6. Prompt for model download
+# 6. Ensure model exists
 # --------------------------
 mkdir -p "$LLAMA_FOLDER/models"
 MODEL_PATH="$LLAMA_FOLDER/models/$MODEL"
@@ -88,21 +89,21 @@ while true; do
         break
     fi
 
-    read -p "No model found. Do you want to download LLaMA 3.2 1B model now? (Y/N) " -r MODEL_CHOICE
+    read -p "No model found. Download LLaMA 3.2 1B model now? (Y/N) " -r MODEL_CHOICE
     if [[ "$MODEL_CHOICE" =~ ^[Yy]$ ]]; then
         echo "Downloading model..."
         curl -L "$MODEL_URL" -o "$MODEL_PATH"
         break
     else
-        echo "Please place your model file '$MODEL' into '$LLAMA_FOLDER/models/' and press Enter to retry."
+        echo "Place '$MODEL' in '$LLAMA_FOLDER/models/' and press Enter to retry."
         read -r
     fi
 done
 
 # --------------------------
-# 7. Prompt for container persistence
+# 7. Ask for container persistence
 # --------------------------
-read -p "Do you want the Docker containers to persist on reboot? (Y/N) " -r PERSIST_INPUT
+read -p "Persist Docker containers on reboot? (Y/N) " -r PERSIST_INPUT
 if [[ "$PERSIST_INPUT" =~ ^[Yy]$ ]]; then
     PERSIST_FLAG="--restart unless-stopped"
 else
@@ -112,61 +113,52 @@ fi
 # --------------------------
 # 8. Build and run LlamaCPP container
 # --------------------------
-echo "Building LlamaCPP Docker image (no cache)..."
+echo "Building LlamaCPP Docker image..."
 docker build --no-cache -t llamacpp-api "$LLAMA_FOLDER"
 
 docker rm -f llamacpp-api 2>/dev/null || true
-
-echo "Starting LlamaCPP container on network $DOCKER_NET..."
 docker run -d $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
 
-# Wait until LlamaCPP responds on localhost
-echo "Waiting for LlamaCPP to be ready on localhost:$LLAMA_PORT..."
+# Wait until LlamaCPP responds
+echo "Waiting for LlamaCPP..."
 MAX_RETRIES=20
 for i in $(seq 1 $MAX_RETRIES); do
     if curl -s "http://localhost:$LLAMA_PORT/health" >/dev/null 2>&1; then
-        echo "✅ LlamaCPP is ready on localhost:$LLAMA_PORT"
+        echo "✅ LlamaCPP ready at localhost:$LLAMA_PORT"
         break
-    else
-        echo "⏳ Waiting... ($i/$MAX_RETRIES)"
-        sleep 3
     fi
+    echo "⏳ Waiting... ($i/$MAX_RETRIES)"
+    sleep 3
     if [ "$i" -eq "$MAX_RETRIES" ]; then
-        echo "❌ LlamaCPP did not start on localhost:$LLAMA_PORT"
+        echo "❌ LlamaCPP did not start."
         docker logs llamacpp-api
         exit 1
     fi
 done
 
 # --------------------------
-# 9. Create SearXNG folder and settings
+# 9. Create SearXNG settings in unified folder
 # --------------------------
 mkdir -p "$SEARX_FOLDER" && chmod 755 "$SEARX_FOLDER"
 cat > "$SEARX_SETTINGS" <<'EOF'
 use_default_settings: true
-
 general:
   debug: false
   instance_name: "SearXNG"
-
 search:
   safe_search: 2
   autocomplete: duckduckgo
   formats:
     - html
     - json
-
 server:
   bind_address: "0.0.0.0"
   port: 8080
   secret_key: "mR7q4vF9sP2xZ8jWkL1uB0yT6cE3nA5"
   public_instance: false
-
 limiter: false
-
 botdetection:
   enabled: false
-
 engines:
   - name: duckduckgo
     disabled: false
@@ -188,67 +180,39 @@ EOF
 chmod 644 "$SEARX_SETTINGS"
 
 # --------------------------
-# 10. Run SearXNG container (with persistence option)
+# 10. Run SearXNG container (unified folder volume)
 # --------------------------
 docker rm -f searxng 2>/dev/null || true
-docker volume create searxng-config
 docker run -d $PERSIST_FLAG --network "$DOCKER_NET" --name searxng -p $SEARX_PORT:8080 \
-    -v searxng-config:/etc/searxng searxng/searxng:latest
+    -v "$SEARX_FOLDER":/etc/searxng searxng/searxng:latest
 
-docker cp "$SEARX_FOLDER/settings.yml" searxng:/etc/searxng/settings.yml
-
-echo "Waiting 10 seconds for SearXNG to start..."
+echo "Waiting 10 seconds for SearXNG..."
 sleep 10
 
 # --------------------------
-# 11. Verify SearXNG connectivity from host
+# 11. Verify connectivity
 # --------------------------
 if curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK" >/dev/null; then
-    echo "✅ SearXNG installed and running at http://localhost:$SEARX_PORT"
+    echo "✅ SearXNG running at http://localhost:$SEARX_PORT"
 else
     echo "⚠️ SearXNG did not respond. Check logs with: docker logs searxng"
 fi
 
-# --------------------------
-# 12. Test LlamaCPP to SearXNG connectivity (inside container)
-# --------------------------
 docker exec llamacpp-api bash -c "apt-get update && apt-get install -y curl && curl -s http://searxng:8080/search?q=test" >/dev/null \
     && echo "✅ LlamaCPP can reach SearXNG by container name" \
     || echo "⚠️ LlamaCPP cannot reach SearXNG"
 
 # --------------------------
-# 13. End-to-end API tests on localhost
+# 12. End-to-end test
 # --------------------------
 echo ""
-echo "Running end-to-end API tests..."
-
-API_URL="http://localhost:$LLAMA_PORT/generate?prompt="
-
-echo ""
-echo "Test 1: SearXNG search only"
+echo "End-to-end test: SearXNG search"
 curl -s "http://localhost:$SEARX_PORT/search?q=latest+news&format=json" | jq
 
 echo ""
-echo "Test 2: LLaMA only"
+echo "End-to-end test: LlamaCPP"
+API_URL="http://localhost:$LLAMA_PORT/generate?prompt="
 curl -s "${API_URL}$(echo Hello world | sed 's/ /+/g')" | jq
 
 echo ""
-echo "Test 3: LLaMA with search trigger (run Python test.py)"
-python3 test.py
-
-echo ""
-echo "End-to-end API tests completed!"
-
-# --------------------------
-# 14. Friendly closing message and socials
-# --------------------------
-echo ""
-echo "Setup complete. Your LlamaCPP + SearXNG environment is running."
-echo "Feel free to explore, test, and extend the setup as needed."
-echo ""
-echo "Connect with me:"
-echo "LinkedIn:  https://www.linkedin.com/in/giancarlo-bellino-02a2292a5/"
-echo "Instagram: https://www.instagram.com/omgitsgb/"
-echo "YouTube:   https://www.youtube.com/@OMGITSGB"
-echo "GitHub:    https://github.com/omgitsgb/llamacpp-searx-installer-linux/commits?author=omgitsgb"
-echo ""
+echo "Setup complete! Everything is under $INSTALL_FOLDER"
