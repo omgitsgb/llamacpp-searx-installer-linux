@@ -31,196 +31,252 @@ The installer handles:
 * Internet connection for downloading models and Docker images
 
 ---
-
-## Installer Script Overview
-
-```bash
-#!/bin/bash
-set -e
-```
-
-* **Purpose:** Ensures the script exits immediately on any error.
-* **Function:** Prevents partial installations or inconsistent states.
-
-### 1. Configuration
-
-```bash
-LLAMA_REPO="https://github.com/omgitsgb/llamacpp-searx-installer-linux.git"
-LLAMA_FOLDER="llamacpp-searx-installer-linux"
-MODEL="llama-3.2-1b-instruct-q8_0.gguf"
-MODEL_URL="https://huggingface.co/hugging-quants/.../$MODEL"
-SEARX_FOLDER="$HOME/searxng"
-SEARX_SETTINGS="$SEARX_FOLDER/settings.yml"
-SEARX_PORT=8080
-LLAMA_PORT=8000
-DOCKER_NET="llama-searx-net"
-```
-
-* Configures repository URLs, model names, folders, ports, and Docker network.
+Ah—got it. You want a **manual, step-by-step approach** to what your installer does, as if the script didn’t exist. Let’s break it down **carefully, from scratch**, so you could do each part by hand and understand it. I’ll assume we’re starting on a fresh Ubuntu system.
 
 ---
 
-### 2. Install Git if missing
+## **Step 0: Prerequisites**
 
-Checks if Git is installed; if not, installs it automatically:
+Make sure you have:
 
-```bash
-if ! command -v git &>/dev/null; then
-    echo "Installing Git..."
-    sudo apt update
-    sudo apt install -y git
-fi
-```
+* Linux (Ubuntu 22.04+ recommended)
+* `curl` installed
+* Internet access
+* `sudo` privileges
 
----
-
-### 3. Clean old Docker remnants
-
-Removes previous Docker installations, images, and volumes to avoid conflicts:
+Check `curl` and `git`:
 
 ```bash
-sudo apt remove -y docker.io docker-compose ... || true
-sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker ...
+curl --version
+git --version
 ```
 
----
-
-### 4. Install Docker
-
-Installs Docker CE and related tools:
+If missing, install them:
 
 ```bash
 sudo apt update
-sudo apt install -y ca-certificates curl
-...
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo apt install -y curl git ca-certificates
 ```
 
 ---
 
-### 5. Create Docker network
+## **Step 1: Clean any old Docker remnants**
+
+If Docker or previous installs exist, remove them to avoid conflicts:
 
 ```bash
-docker network create "$DOCKER_NET"
+sudo apt remove -y docker.io docker-compose docker-compose-plugin containerd runc || true
+sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-compose-plugin || true
+sudo apt-get autoremove -y
+sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/apt/keyrings/docker* /etc/apt/sources.list.d/docker*
 ```
 
-* Creates an isolated network so LlamaCPP and SearXNG can communicate.
+This ensures a clean slate.
 
 ---
 
-### 6. Clone or update LlamaCPP repository
+## **Step 2: Install Docker (manually)**
+
+1. Add Docker’s official GPG key:
 
 ```bash
-if [ -d "$LLAMA_FOLDER" ]; then
-    git pull
-else
-    git clone "$LLAMA_REPO"
-fi
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
 ```
 
-* Ensures the latest version of LlamaCPP is available locally.
-
----
-
-### 7. Model download
-
-Prompts the user to download the LLaMA 3.2 1B model if it’s not already present:
+2. Add the Docker repository:
 
 ```bash
-read -p "Do you want to download LLaMA 3.2 1B model now? (Y/N) " -r MODEL_CHOICE
-```
-
-* Alternatively, the user can manually place the model file in the models folder.
-
----
-
-### 8. Docker container persistence
-
-Optional: keep containers running after system reboot:
-
-```bash
-read -p "Do you want the Docker containers to persist on reboot? (Y/N) " -r PERSIST_INPUT
-```
-
----
-
-### 9. Build and run LlamaCPP container
-
-```bash
-docker build --no-cache -t llamacpp-api "$LLAMA_FOLDER"
-docker run -d $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
-```
-
-* Waits until the container responds to confirm it’s running properly.
-
----
-
-### 10. Create SearXNG folder and settings
-
-```bash
-mkdir -p "$SEARX_FOLDER"
-cat > "$SEARX_SETTINGS" <<'EOF'
-...
+sudo tee /etc/apt/sources.list.d/docker.list > /dev/null <<EOF
+deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable
 EOF
 ```
 
-* Generates a default configuration for SearXNG, with engines enabled and bot detection disabled.
-
----
-
-### 11. Run SearXNG container
+3. Update and install Docker:
 
 ```bash
-docker run -d $PERSIST_FLAG --network "$DOCKER_NET" --name searxng -p $SEARX_PORT:8080 \
-    -v searxng-config:/etc/searxng searxng/searxng:latest
-docker cp "$SEARX_SETTINGS" searxng:/etc/searxng/settings.yml
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
-* Ensures LlamaCPP can query SearXNG from inside the container.
-
----
-
-### 12. Connectivity checks
-
-* Tests SearXNG from the host:
+4. Verify Docker:
 
 ```bash
-curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK"
+docker --version
+sudo docker run hello-world
 ```
 
-* Tests LlamaCPP container can reach SearXNG:
+Optional: run Docker without `sudo`:
 
 ```bash
-docker exec llamacpp-api bash -c "curl -s http://searxng:8080/search?q=test"
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
 ---
 
-### 13. End-to-end API tests
+## **Step 3: Create a Docker network**
 
-* Tests LlamaCPP and SearXNG separately and together:
+This allows LlamaCPP and SearXNG containers to communicate by name:
 
 ```bash
-curl -s "http://localhost:$SEARX_PORT/search?q=latest+news&format=json" | jq
-curl -s "${API_URL}$(echo Hello world | sed 's/ /+/g')" | jq
-python3 test.py
+docker network create llama-searx-net
 ```
 
 ---
 
-### 14. Friendly closing message
-
-Displays success message and social links:
+## **Step 4: Clone LlamaCPP repository**
 
 ```bash
-echo "Setup complete. Your LlamaCPP + SearXNG environment is running."
-echo "LinkedIn:  https://www.linkedin.com/in/giancarlo-bellino-02a2292a5/"
-echo "Instagram: https://www.instagram.com/omgitsgb/"
-echo "YouTube:   https://www.youtube.com/@OMGITSGB"
-echo "GitHub:    https://github.com/omgitsgb/llamacpp-searx-installer-linux/commits?author=omgitsgb"
+git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
+cd llamacpp-searx-installer-linux
+```
+
+Or, if already cloned:
+
+```bash
+cd llamacpp-searx-installer-linux
+git pull
 ```
 
 ---
+
+## **Step 5: Download LLaMA 3.2 1B model**
+
+Create a models folder:
+
+```bash
+mkdir -p models
+```
+
+Download the model (or manually place it in `models/`):
+
+```bash
+curl -L -o models/llama-3.2-1b-instruct-q8_0.gguf https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/llama-3.2-1b-instruct-q8_0.gguf
+```
+
+---
+
+## **Step 6: Build LlamaCPP Docker image**
+
+```bash
+docker build --no-cache -t llamacpp-api .
+```
+
+---
+
+## **Step 7: Start LlamaCPP container**
+
+```bash
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+```
+
+Check it’s ready:
+
+```bash
+curl http://localhost:8000/health
+```
+
+---
+
+## **Step 8: Create SearXNG folder and settings**
+
+```bash
+mkdir -p ~/searxng
+cat > ~/searxng/settings.yml <<'EOF'
+use_default_settings: true
+general:
+  debug: false
+  instance_name: "SearXNG"
+search:
+  safe_search: 2
+  autocomplete: duckduckgo
+  formats:
+    - html
+    - json
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "mR7q4vF9sP2xZ8jWkL1uB0yT6cE3nA5"
+  public_instance: false
+limiter: false
+botdetection:
+  enabled: false
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: google
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: yahoo
+    disabled: false
+  - name: qwant
+    disabled: false
+  - name: ecosia
+    disabled: false
+  - name: yandex
+    disabled: false
+  - name: searxng
+    disabled: false
+EOF
+```
+
+---
+
+## **Step 9: Run SearXNG container**
+
+```bash
+docker volume create searxng-config
+docker run -d --network llama-searx-net -p 8080:8080 --name searxng -v searxng-config:/etc/searxng searxng/searxng:latest
+docker cp ~/searxng/settings.yml searxng:/etc/searxng/settings.yml
+```
+
+Wait a few seconds:
+
+```bash
+sleep 10
+```
+
+Verify SearXNG:
+
+```bash
+curl "http://localhost:8080/search?q=hello"
+```
+
+---
+
+## **Step 10: Test LlamaCPP → SearXNG connectivity**
+
+```bash
+docker exec llamacpp-api bash -c "apt-get update && apt-get install -y curl && curl -s http://searxng:8080/search?q=test"
+```
+
+---
+
+## **Step 11: End-to-end test from host**
+
+1. Test SearXNG only:
+
+```bash
+curl "http://localhost:8080/search?q=latest+news&format=json" | jq
+```
+
+2. Test LlamaCPP only:
+
+```bash
+curl "http://localhost:8000/generate?prompt=Hello+world" | jq
+```
+
+3. Optional: run `test.py` from the repo to trigger integrated behavior.
+
+---
+
+✅ At this point, everything is running manually, exactly like your script would do automatically.
+
+---
+
 
 ## Usage
 
