@@ -678,32 +678,6 @@ curl -v http://searxng:8080/search?q=test
 
 ## 🔄 Persistence & Reboot Safety
 
-For LlamaCPP + SearXNG, we **recommend using Docker volumes** for persistent and robust setup.
-Bind mounts can be used as a quick alternative but may break after a reboot.
-
----
-
-Got it — we’ll fully **rewrite both Option A and B** so they **reflect the correct folder structure**:
-
-```
-$HOME/llamacpp-searx/llamacpp   → LlamaCPP
-$HOME/llamacpp-searx/searxng   → SearXNG
-```
-
-No `searxng/searxng:latest` pulled from Docker Hub — everything is **local**. Here’s the corrected section for your README:
-
----
-
-Perfect — let’s fully **rewrite your section** so **all paths reflect the new folder structure**:
-
-* **LlamaCPP:** `$HOME/llamacpp-searx/llamacpp`
-* **SearXNG:** `$HOME/llamacpp-searx/searxng`
-* No references to `/home/gb` or Docker Hub SearXNG images.
-
-Here’s the cleaned-up version:
-
----
-
 ### **Option A – Recommended: Docker Volume (persistent, robust)**
 
 Got it — here’s your block rewritten to **reflect the proper folder structure** (`$HOME/llamacpp-searx/llamacpp` for LlamaCPP, `$HOME/llamacpp-searx/searxng` for SearXNG) and a **correct network/volume setup** that avoids the “network not found” error:
