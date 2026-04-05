@@ -370,9 +370,16 @@ cd $HOME/llamacpp-searx/llamacpp/models
 curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/llama-3.2-1b-instruct-q8_0.gguf
 ```
 
+## ⚡ Step 4: Build & Run LlamaCPP Container
+
+```bash
+docker network create llama-searx-net
+docker volume create searxng-config
+```
+
 ---
 
-## ⚡ Step 4: Build & Run LlamaCPP Container
+## ⚡ Step 5: Build & Run LlamaCPP Container
 
 ```bash
 cd $HOME/llamacpp-searx/llamacpp
@@ -383,7 +390,7 @@ docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --
 
 ---
 
-## ⚡ Step 5: Prepare & Run SearXNG
+## ⚡ Step 6: Prepare & Run SearXNG
 
 1. **Create folder & `settings.yml`**
 
@@ -459,7 +466,7 @@ curl "http://localhost:8080/search?q=hello&format=json"
 ✅ Now **all paths** are correctly using `$HOME/llamacpp-searx/llamacpp` and `$HOME/llamacpp-searx/searxng`.
 
 
-## 🧪 Step 6: Health & Connectivity Tests
+## 🧪 Step 7: Health & Connectivity Tests
 
 ### 1️⃣ List running Docker containers
 
