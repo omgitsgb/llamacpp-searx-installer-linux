@@ -30,10 +30,7 @@ The installer handles:
 * `curl` installed
 * Internet connection for downloading models and Docker images
 
----
-Ah—got it. You want a **manual, step-by-step approach** to what your installer does, as if the script didn’t exist. Let’s break it down **carefully, from scratch**, so you could do each part by hand and understand it. I’ll assume we’re starting on a fresh Ubuntu system.
 
----
 
 ## **Step 0: Prerequisites**
 
