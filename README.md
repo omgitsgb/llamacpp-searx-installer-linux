@@ -30,7 +30,10 @@ The installer handles:
 * `curl` installed
 * Internet connection for downloading models and Docker images
 
-## 1. INSTALLER
+
+## USING INSTALLER
+---
+## 1. Install
 Clone the repo (first time only)
 ```bash
 cd ~  # or wherever you want to keep it
@@ -54,8 +57,8 @@ chmod +x llamacpp-searxng-installer-linux.sh
 ```bash
 ./llamacpp-searxng-installer-linux.sh
 ```
-
-
+---
+---
 ## **Step 0: Prerequisites**
 
 Make sure you have:
@@ -78,7 +81,6 @@ If missing, install them:
 sudo apt update
 sudo apt install -y curl git ca-certificates
 ```
-
 
 ## **Manual LlamaCPP + SearXNG Setup (Ubuntu 24.04)**
 
