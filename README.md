@@ -30,6 +30,30 @@ The installer handles:
 * `curl` installed
 * Internet connection for downloading models and Docker images
 
+## 1. INSTALLER
+Clone the repo (first time only)
+```bash
+cd ~  # or wherever you want to keep it
+git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
+cd llamacpp-searx-installer-linux
+```
+
+## 2. Pull latest changes (future updates)
+```bash
+cd ~/llamacpp-searx-installer-linux
+git pull
+```
+
+## 3.  Make the script executable
+
+```bash
+chmod +x llamacpp-searxng-installer-linux.sh
+```
+
+##  4.  Run the script
+```bash
+./llamacpp-searxng-installer-linux.sh
+```
 
 
 ## **Step 0: Prerequisites**
