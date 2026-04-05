@@ -142,185 +142,124 @@ nano main.py
 ```
 Paste the production-ready API code below. Save & exit.
 ```bash
-# ---------------------------
-# IMPORTS
-# ---------------------------
-import os                      # Provides functions to interact with the operating system (paths, files, etc.)
-import logging                 # Built-in Python module for logging info, warnings, and errors
-import requests                # Third-party library to make HTTP requests (used to query SearXNG)
-from fastapi import FastAPI, HTTPException  
-                                # FastAPI framework for building APIs
-                                # HTTPException allows sending errors with custom HTTP status codes
-from llama_cpp import Llama     # LlamaCPP Python binding to load and run .gguf LLaMA models
+import os
+import logging
+import requests
+from fastapi import FastAPI, HTTPException
+from llama_cpp import Llama
+import subprocess
 
 # ---------------------------
-# CONFIGURATION
+# Config
 # ---------------------------
-
-# Get absolute path to the "models" folder relative to this script
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
-
-# List all files in the models folder that end with ".gguf" (LLaMA GGUF model format)
 gguf_models = [f for f in os.listdir(MODEL_DIR) if f.endswith(".gguf")]
 
-# If no GGUF model is found, raise an error and stop execution
 if not gguf_models:
     raise FileNotFoundError(f"No .gguf model found in {MODEL_DIR}")
 
-# Use the first GGUF model found in the folder
 MODEL_PATH = os.path.join(MODEL_DIR, gguf_models[0])
-
-# Set the context size: how many tokens the model can "remember" at once
 CONTEXT_SIZE = 4096
-
-# Maximum number of tokens to generate per request
 MAX_TOKENS = 512
 
-# Words that, if found in a prompt, will trigger a SearXNG search
 SEARCH_TRIGGERS = ["news", "latest", "current", "update", "headlines"]
-
-# URL of the SearXNG instance (accessible inside Docker network as "searxng")
 SEARX_URL = "http://searxng:8080/search"
 
 # ---------------------------
-# FASTAPI APP & LOGGING
+# App & Logging
 # ---------------------------
-
-# Initialize a FastAPI application
 app = FastAPI()
-
-# Configure logging globally (INFO level shows basic info and errors)
 logging.basicConfig(level=logging.INFO)
-
-# Placeholder variable for the Llama model; will be loaded at startup
-llm = None  
+llm = None  # Will be loaded on startup
 
 # ---------------------------
-# STARTUP EVENT: LOAD LLAMA MODEL
+# Detect CUDA dynamically
 # ---------------------------
+def has_cuda():
+    try:
+        # Check if nvidia-smi exists and can see GPUs
+        result = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
 
+# ---------------------------
+# Startup Event to load Llama
+# ---------------------------
 @app.on_event("startup")
 def load_model():
-    """
-    This function runs once when the FastAPI app starts.
-    It loads the LLaMA model into memory, making it ready for generating responses.
-    """
-    global llm  # Declare that we are modifying the global llm variable
-    logging.info(f"Loading model from {MODEL_PATH} ...")  # Log that model loading has started
-
-    # Load LLaMA model using llama_cpp
-    llm = Llama(model_path=MODEL_PATH, n_ctx=CONTEXT_SIZE)
-
-    # Confirm successful model load
+    global llm
+    use_cuda = has_cuda()
+    logging.info(f"{'CUDA detected — using GPU' if use_cuda else 'CUDA not detected — using CPU'}")
+    llm = Llama(model_path=MODEL_PATH, n_ctx=CONTEXT_SIZE, use_cuda=use_cuda)
     logging.info("✅ Model loaded successfully")
 
 # ---------------------------
-# SEARCH HELPER FUNCTION
+# Search helper
 # ---------------------------
-
 def searx_search(query):
-    """
-    Query the SearXNG search engine and return top results.
-    
-    Parameters:
-        query (str): The text query to search.
-    
-    Returns:
-        list of dict: Each dict contains 'title', 'content', 'url' of a result.
-    """
     try:
-        # Make an HTTP GET request to the SearXNG API
-        resp = requests.get(SEARX_URL, params={"q": query, "format": "json"}, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        }
 
-        # Raise an exception if HTTP status is an error (4xx or 5xx)
+        resp = requests.get(
+            SEARX_URL,
+            params={"q": query, "format": "json"},
+            headers=headers,
+            timeout=10
+        )
+
         resp.raise_for_status()
 
-        results = []  # List to store top results
-        # Extract relevant fields from each search result returned by SearXNG
+        results = []
         for r in resp.json().get("results", []):
             results.append({
-                "title": r.get("title", "").strip(),  # Remove whitespace
+                "title": r.get("title", "").strip(),
                 "content": (r.get("content") or r.get("description") or "").strip(),
                 "url": r.get("url", "").strip()
             })
 
-        # Return only the top 5 results to keep prompt concise
         return results[:5]
 
     except Exception as e:
-        # Log any error that occurs while querying SearXNG
         logging.error(f"SearXNG error: {e}")
-        return []  # Return empty list if search fails
-
+        return []
 # ---------------------------
-# ROOT ROUTE
+# Routes
 # ---------------------------
-
 @app.get("/")
 def read_root():
-    """
-    Root endpoint for health check.
-    Returns a JSON object with the loaded model name.
-    """
     return {"message": f"LlamaCPP API running with {gguf_models[0]}"}
-
-# ---------------------------
-# GENERATE ROUTE
-# ---------------------------
 
 @app.get("/generate")
 def generate(prompt: str):
-    """
-    Main endpoint to generate text using the LLaMA model.
-    
-    Parameters:
-        prompt (str): User-provided text prompt.
-    
-    Returns:
-        dict: JSON containing original prompt, whether a search was triggered, 
-              any search results, and generated model output.
-    """
-    global llm  # Reference the global model variable
-
-    # If the model hasn't loaded yet, return a 503 Service Unavailable
+    global llm
     if llm is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
 
-    logging.info(f"Prompt: {prompt}")  # Log the incoming prompt
-
+    logging.info(f"Prompt: {prompt}")
     try:
-        # Check if any search trigger words appear in the prompt
         search_triggered = any(word.lower() in prompt.lower() for word in SEARCH_TRIGGERS)
-
-        # Perform search if triggered
         search_results = searx_search(prompt) if search_triggered else []
 
-        # Format prompt for the model
         if search_results:
-            # Number results and format content for readability
             numbered = "\n".join([
                 f"{i+1}. Title: {r['title']}\n   Content: {r['content'][:300]}\n   URL: {r['url']}"
                 for i, r in enumerate(search_results)
             ])
-            # Include search results in the prompt
             full_prompt = f"Answer the question using ONLY these search results:\n{numbered}\nQuestion: {prompt}\nAnswer:"
         else:
-            # No search results, use original prompt
             full_prompt = prompt
 
-        # Generate text with LLaMA
         output = llm(full_prompt, max_tokens=MAX_TOKENS)
-
-        # Return JSON response including all useful info
         return {
             "prompt": prompt,
             "search_triggered": search_triggered,
             "search_results": search_results,
             "output": output['choices'][0]['text'].strip()
         }
-
     except Exception as e:
-        # Log and return any error that occurs during generation
         logging.error(f"Error in /generate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 ```
