@@ -58,10 +58,6 @@ sudo apt update
 sudo apt install -y curl git ca-certificates
 ```
 
----
-Ah! You want a **manual, step-by-step guide you can follow in the terminal**, not a bash script. Got it. Here’s a clean manual workflow for Ubuntu 24.04 (“noble”), including Docker, LlamaCPP, SearXNG, and model setup:
-
----
 
 ## **Manual LlamaCPP + SearXNG Setup (Ubuntu 24.04)**
 
