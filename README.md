@@ -676,6 +676,17 @@ Bind mounts can be used as a quick alternative but may break after a reboot.
 
 ---
 
+Got it — we’ll fully **rewrite both Option A and B** so they **reflect the correct folder structure**:
+
+```
+$HOME/llamacpp-searx/llamacpp   → LlamaCPP
+$HOME/llamacpp-searx/searxng   → SearXNG
+```
+
+No `searxng/searxng:latest` pulled from Docker Hub — everything is **local**. Here’s the corrected section for your README:
+
+---
+
 ### **Option A – Recommended: Docker Volume (persistent, robust)**
 
 1. Stop old containers and remove old network/volume (if any):
@@ -694,62 +705,67 @@ docker network create llama-searx-net
 docker volume create searxng-config
 ```
 
-3. Pull latest SearXNG image and rebuild LlamaCPP (in case of updates):
+3. Build LlamaCPP container (latest code):
 
 ```bash
-docker pull searxng/searxng:latest
-cd $HOME/llamacpp-searx-installer-linux
-docker build --pull -t llamacpp-api .
+cd $HOME/llamacpp-searx/llamacpp
+docker build --no-cache -t llamacpp-api .
 ```
 
-4. Run containers using Docker volume and automatic restart (`--restart unless-stopped`):
+4. Run SearXNG container using local folder & Docker volume:
 
 ```bash
 docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
-    -v searxng-config:/etc/searxng --restart unless-stopped searxng/searxng:latest
+    -v searxng-config:/etc/searxng --restart unless-stopped \
+    -v "$HOME/llamacpp-searx/searxng":/etc/searxng_local:ro python:3.11-slim tail -f /dev/null
 
-docker cp ~/searxng/settings.yml searxng:/etc/searxng
+# Copy settings.yml into the container volume
+docker cp $HOME/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/
+```
 
+5. Run LlamaCPP container:
+
+```bash
 docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api \
     --restart unless-stopped llamacpp-api
 ```
 
-5. Test connectivity:
+6. Test connectivity:
 
 ```bash
 docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
 ```
 
-> ✅ Should return JSON results.
-> This setup **persists across reboots** and automatically restarts containers.
+> ✅ Works, persists across reboots, and automatically restarts containers.
 
 ---
 
 ### **Option B – Alternative: Bind Mount (quick test, not robust)**
 
-Use this if you want to quickly test changes on the host without rebuilding the volume.
+Use this if you want to **quickly test changes on the host** without rebuilding the Docker volume.
 
 1. Stop and remove containers:
 
 ```bash
-docker stop llamacpp-api searxng
-docker rm llamacpp-api searxng
+docker stop llamacpp-api searxng 2>/dev/null
+docker rm llamacpp-api searxng 2>/dev/null
 ```
 
 2. Verify host folder and settings file exist:
 
 ```bash
-ls -la ~/searxng
-cat ~/searxng/settings.yml
+ls -la $HOME/llamacpp-searx/searxng
+cat $HOME/llamacpp-searx/searxng/settings.yml
 ```
 
 3. Run containers with bind mount (no automatic restart):
 
 ```bash
 docker run -d --network llama-searx-net --name searxng -p 8080:8080 \
-    -v "$HOME/searxng/settings.yml":/etc/searxng/settings.yml:ro searxng/searxng:latest
+    -v "$HOME/llamacpp-searx/searxng/settings.yml":/etc/searxng/settings.yml:ro python:3.11-slim tail -f /dev/null
 
-docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api \
+    llamacpp-api
 ```
 
 4. Test connectivity from LlamaCPP container:
@@ -761,6 +777,7 @@ curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?Quo
 > ✅ Works immediately, but may **break after a host reboot**.
 
 ---
+
 
 ### **Rebuild Notes**
 
