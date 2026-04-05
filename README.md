@@ -42,19 +42,13 @@ git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
 cd llamacpp-searx-installer-linux
 ```
 
-## 2. Pull latest changes (future updates)
-```bash
-cd ~/llamacpp-searx-installer-linux
-git pull
-```
-
-## 3.  Make the script executable
+## 2.  Make the script executable
 
 ```bash
 chmod +x llamacpp-searxng-installer-linux.sh
 ```
 
-##  4.  Run the script
+##  3.  Run the script
 ```bash
 ./llamacpp-searxng-installer-linux.sh
 ```
