@@ -32,7 +32,7 @@ The installer handles:
 
 ---
 
-## USING INSTALLER
+# USING INSTALLER
 
 ## 1. Install
 Clone the repo (first time only)
@@ -69,7 +69,7 @@ sudo apt install -y curl git lsb-release ca-certificates gnupg
 ```
 
 ---
-### MANUEL SETUP
+# MANUEL SETUP
 ## ⚡ Step 1: Install Docker
 
 1. Remove old Docker remnants:
