@@ -693,7 +693,7 @@ docker volume create searxng-config
 ```bash
 cd $HOME/llamacpp-searx/llamacpp
 docker build --no-cache -t llamacpp-api .
-docker rm -f llamacpp-api 2>/dev/null
+
 ```
 
 **Run LlamaCPP API (choose restart behavior):**
