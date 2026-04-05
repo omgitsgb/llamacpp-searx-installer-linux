@@ -32,14 +32,14 @@ The installer handles:
 
 ---
 
-# Install dependencies if needed:
+# Check dependencies:
 
 ```bash
 curl --version      # Should print curl version if installed
 git --version       # Should print git version if installed
 lsb_release -a      # Should print Ubuntu version info if installed
 ```
-
+# Install dependencies if needed:
 ```bash
 sudo apt update
 sudo apt install -y curl git lsb-release ca-certificates gnupg
