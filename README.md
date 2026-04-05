@@ -318,13 +318,36 @@ docker volume create searxng-config
 
 ---
 
-## ⚡ Step 5: Build & Run LlamaCPP Container
+### **CPU Version**
 
-```bash
+```bash id="k9f1hb"
 cd $HOME/llamacpp-searx/llamacpp
-docker build --no-cache -t llamacpp-api .
+
+# Build CPU image
+docker build -f Dockerfile.cpu --no-cache -t llamacpp-api .
+
+# Remove old container if exists
 docker rm -f llamacpp-api 2>/dev/null
+
+# Run CPU container with auto-restart
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+```
+
+---
+
+### **GPU Version**
+
+```bash id="mw1tzn"
+cd $HOME/llamacpp-searx/llamacpp
+
+# Build GPU image
+docker build -f Dockerfile.gpu --no-cache -t llamacpp-api .
+
+# Remove old container if exists
+docker rm -f llamacpp-api 2>/dev/null
+
+# Run GPU container with auto-restart and full GPU access
+docker run -d --gpus all --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
 ---
