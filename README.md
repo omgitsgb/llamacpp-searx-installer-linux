@@ -272,14 +272,21 @@ Got it — here’s your section rewritten so everything reflects your **new fol
 ```bash
 nano Dockerfile
 ```
-
+### CPU Version
 Paste:
 
-```dockerfile
+```dockerfile.cpu
+# Dockerfile.cpu
 FROM python:3.11-slim
 
+# --------------------------
+# Set working directory
+# --------------------------
 WORKDIR /app
 
+# --------------------------
+# Install dependencies
+# --------------------------
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -288,17 +295,79 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# --------------------------
+# Copy requirements and install
+# --------------------------
 COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
+# --------------------------
+# Copy source code and models
+# --------------------------
 COPY main.py .
 COPY models ./models
 
+# --------------------------
+# Expose port
+# --------------------------
 EXPOSE 8000
 
+# --------------------------
+# Run app
+# --------------------------
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
+### GPU Version
+Paste:
+
+```dockerfile.gpu
+# Dockerfile.gpu
+FROM nvidia/cuda:13.1.1-runtime-ubuntu22.04
+
+# --------------------------
+# Set working directory
+# --------------------------
+WORKDIR /app
+
+# --------------------------
+# Install Python & dependencies
+# --------------------------
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip \
+    build-essential \
+    cmake \
+    git \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip3 install --upgrade pip
+
+# --------------------------
+# Copy requirements and install
+# --------------------------
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --------------------------
+# Copy source code and models
+# --------------------------
+COPY main.py .
+COPY models ./models
+
+# --------------------------
+# Expose port
+# --------------------------
+EXPOSE 8000
+
+# --------------------------
+# Run app
+# --------------------------
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
 
 ---
 
