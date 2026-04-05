@@ -51,8 +51,8 @@ sudo apt install -y curl git lsb-release ca-certificates gnupg
 Clone the repo (first time only)
 ```bash
 cd ~  # or wherever you want to keep it
-git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git
-cd llamacpp-searx-installer-linux
+curl -O https://raw.githubusercontent.com/omgitsgb/llamacpp-searx-installer-linux/main/llamacpp-searxng-installer-linux.sh
+
 ```
 
 ## 2.  Make the script executable
