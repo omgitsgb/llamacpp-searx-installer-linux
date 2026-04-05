@@ -706,7 +706,13 @@ Here’s the cleaned-up version:
 
 ### **Option A – Recommended: Docker Volume (persistent, robust)**
 
-1. Stop old containers and remove old network/volume (if any):
+Got it — here’s your block rewritten to **reflect the proper folder structure** (`$HOME/llamacpp-searx/llamacpp` for LlamaCPP, `$HOME/llamacpp-searx/searxng` for SearXNG) and a **correct network/volume setup** that avoids the “network not found” error:
+
+---
+
+### **Option A – Recommended: Docker Volume (persistent, robust)**
+
+1. **Stop old containers and remove old network/volume (if any):**
 
 ```bash
 docker stop llamacpp-api searxng 2>/dev/null
@@ -715,14 +721,14 @@ docker network rm llama-searx-net 2>/dev/null
 docker volume rm searxng-config 2>/dev/null
 ```
 
-2. Recreate network and volume:
+2. **Recreate network and volume:**
 
 ```bash
 docker network create llama-searx-net
 docker volume create searxng-config
 ```
 
-3. Build LlamaCPP container (latest code):
+3. **Build LlamaCPP container (latest code):**
 
 ```bash
 cd $HOME/llamacpp-searx/llamacpp
@@ -731,24 +737,20 @@ docker rm -f llamacpp-api 2>/dev/null
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
-4. Run SearXNG container using local folder & Docker volume:
+4. **Run SearXNG container using local folder & Docker volume:**
 
 ```bash
-docker volume create searxng-config
 docker rm -f searxng 2>/dev/null
 
-docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
-docker cp $HOME/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/settings.yml
+docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 \
+    -v searxng-config:/etc/searxng \
+    -v "$HOME/llamacpp-searx/searxng":/etc/searxng_local:ro python:3.11-slim tail -f /dev/null
+
+# Copy settings.yml into the container volume
+docker cp $HOME/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/
 ```
 
-5. Run LlamaCPP container:
-
-```bash
-docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api \
-    --restart unless-stopped llamacpp-api
-```
-
-6. Test connectivity:
+5. **Test connectivity:**
 
 ```bash
 docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
@@ -757,6 +759,8 @@ docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
 > ✅ Works, persists across reboots, and automatically restarts containers.
 
 ---
+
+
 
 ### **Option B – Alternative: Bind Mount (quick test, not robust)**
 
