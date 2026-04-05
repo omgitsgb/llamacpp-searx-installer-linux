@@ -759,12 +759,12 @@ curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." 
 
 ✅ Returns JSON output from LlamaCPP, optionally using live SearXNG results.
 
-# -------------------------------------------------
+---
 # 📝 Note
-# With everything set up and linked properly, you can now:
-# 1. Use a simple test script like `test.py` to query the API.
-# 2. Or create a full application around these querying methods.
-# Both approaches can dynamically pull responses from LlamaCPP and optionally live search results from SearXNG.
-# -------------------------------------------------
+ With everything set up and linked properly, you can now:
+ 1. Use a simple test script like `test.py` to query the API.
+ 2. Or create a full application around these querying methods.
+ Both approaches can dynamically pull responses from LlamaCPP and optionally live search results from SearXNG.
+---
 
 
