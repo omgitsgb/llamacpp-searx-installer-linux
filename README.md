@@ -155,11 +155,6 @@ docker rm -f llamacpp-api 2>/dev/null
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
-**Check if it’s ready:**
-
-```bash
-curl -s http://localhost:8000/health
-```
 
 ---
 
