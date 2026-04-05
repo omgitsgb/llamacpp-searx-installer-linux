@@ -130,7 +130,7 @@ Paste:
 ```
 fastapi
 uvicorn[standard]
-llama-cpp-python
+llama-cpp-python>=0.1.103
 requests
 ```
 
