@@ -402,7 +402,7 @@ docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacp
 4. Test connectivity from LlamaCPP container:
 
 ```bash
-docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
+curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today? Quote Sources" | jq
 ```
 
 > ✅ Works immediately, but may **break after a host reboot**.
