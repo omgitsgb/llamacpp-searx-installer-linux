@@ -2,15 +2,12 @@
 set -e
 
 # ==================================================
-# LlamaCPP + SearXNG Full Installer for Linux (Unified Folder)
+# LlamaCPP + SearXNG Installer with CUDA detection
 # ==================================================
 
-# --------------------------
-# Configuration
-# --------------------------
 INSTALL_FOLDER="$HOME/llamacpp-searx"
 LLAMA_FOLDER="$INSTALL_FOLDER/llamacpp"
-SEARX_FOLDER="/home/gb/llamacpp-searx/searxng"  # Fixed path
+SEARX_FOLDER="$INSTALL_FOLDER/searxng"
 MODEL="llama-3.2-1b-instruct-q8_0.gguf"
 MODEL_URL="https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/$MODEL"
 
@@ -18,6 +15,52 @@ SEARX_SETTINGS="$SEARX_FOLDER/settings.yml"
 SEARX_PORT=8080
 LLAMA_PORT=8000
 DOCKER_NET="llama-searx-net"
+
+# --------------------------
+# 0. Detect NVIDIA GPU / CUDA
+# --------------------------
+echo "Detecting GPU..."
+HAS_GPU=false
+HAS_CUDA=false
+DEVICE_CHOICE="cpu"
+
+if command -v nvidia-smi &>/dev/null; then
+    HAS_GPU=true
+    echo "✅ NVIDIA GPU detected"
+    if command -v nvcc &>/dev/null; then
+        HAS_CUDA=true
+        echo "✅ CUDA toolkit installed"
+    else
+        echo "⚠️ CUDA toolkit not found"
+    fi
+else
+    echo "⚠️ No NVIDIA GPU detected"
+fi
+
+# Ask user to install CUDA if GPU exists but CUDA missing
+if [ "$HAS_GPU" = true ] && [ "$HAS_CUDA" = false ]; then
+    read -p "CUDA toolkit not found. Install CUDA 13.1 now? (Y/N) " -r CUDA_CHOICE
+    if [[ "$CUDA_CHOICE" =~ ^[Yy]$ ]]; then
+        echo "Installing CUDA..."
+        sudo apt update
+        sudo apt install -y nvidia-cuda-toolkit
+        HAS_CUDA=true
+    else
+        echo "Continuing without CUDA (CPU mode)"
+    fi
+fi
+
+# Ask user which device to use if GPU + CUDA available
+if [ "$HAS_GPU" = true ] && [ "$HAS_CUDA" = true ]; then
+    read -p "Run LlamaCPP on GPU or CPU? (gpu/cpu) " -r DEVICE_INPUT
+    if [[ "$DEVICE_INPUT" =~ ^[Gg][Pp][Uu]$ ]]; then
+        DEVICE_CHOICE="gpu"
+        echo "✅ LlamaCPP will use GPU"
+    else
+        DEVICE_CHOICE="cpu"
+        echo "⚠️ LlamaCPP will run in CPU mode"
+    fi
+fi
 
 # --------------------------
 # 1. Install Git if missing
@@ -29,31 +72,30 @@ if ! command -v git &>/dev/null; then
 fi
 
 # --------------------------
-# 2. Clean old Docker remnants
+# 2. Install Python3 & pip
 # --------------------------
-sudo apt remove -y docker.io docker-compose docker-compose-plugin containerd runc 2>/dev/null || true
-sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-compose-plugin || true
-sudo apt-get autoremove -y || true
-sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/apt/keyrings/docker* /etc/apt/sources.list.d/docker*
+if ! command -v python3 &>/dev/null; then
+    echo "Installing Python3..."
+    sudo apt update
+    sudo apt install -y python3 python3-pip
+fi
 
 # --------------------------
 # 3. Install Docker
 # --------------------------
-sudo apt update
-sudo apt install -y ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
-Components: stable
-Architectures: $(dpkg --print-architecture)
-Signed-By: /etc/apt/keyrings/docker.asc
+if ! command -v docker &>/dev/null; then
+    echo "Installing Docker..."
+    sudo apt update
+    sudo apt install -y ca-certificates curl gnupg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null <<EOF
+deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable
 EOF
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+fi
 
 # --------------------------
 # 4. Create Docker network
@@ -71,7 +113,6 @@ if [ -d "$LLAMA_FOLDER" ]; then
     echo "Repo exists, pulling latest changes..."
     cd "$LLAMA_FOLDER"
     git pull
-    cd ..
 else
     echo "Cloning repository..."
     git clone https://github.com/omgitsgb/llamacpp-searx-installer-linux.git "$LLAMA_FOLDER"
@@ -82,23 +123,16 @@ fi
 # --------------------------
 mkdir -p "$LLAMA_FOLDER/models"
 MODEL_PATH="$LLAMA_FOLDER/models/$MODEL"
-
-while true; do
-    if [ -f "$MODEL_PATH" ]; then
-        echo "Model found: $MODEL_PATH"
-        break
-    fi
-
+if [ ! -f "$MODEL_PATH" ]; then
     read -p "No model found. Download LLaMA 3.2 1B model now? (Y/N) " -r MODEL_CHOICE
     if [[ "$MODEL_CHOICE" =~ ^[Yy]$ ]]; then
         echo "Downloading model..."
         curl -L "$MODEL_URL" -o "$MODEL_PATH"
-        break
     else
-        echo "Place '$MODEL' in '$LLAMA_FOLDER/models/' and press Enter to retry."
-        read -r
+        echo "Place '$MODEL' in '$LLAMA_FOLDER/models/' and rerun installer."
+        exit 1
     fi
-done
+fi
 
 # --------------------------
 # 7. Ask for container persistence
@@ -114,37 +148,26 @@ fi
 # 8. Build and run LlamaCPP container
 # --------------------------
 echo "Building LlamaCPP Docker image..."
-docker build --no-cache -t llamacpp-api "$LLAMA_FOLDER"
+cd "$LLAMA_FOLDER"
+docker build --no-cache -t llamacpp-api .
 
 docker rm -f llamacpp-api 2>/dev/null || true
-docker run -d $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
 
-# Wait until LlamaCPP responds
-echo "Waiting for LlamaCPP..."
-MAX_RETRIES=20
-for i in $(seq 1 $MAX_RETRIES); do
-    if curl -s "http://localhost:$LLAMA_PORT/health" >/dev/null 2>&1; then
-        echo "✅ LlamaCPP ready at localhost:$LLAMA_PORT"
-        break
-    fi
-    echo "⏳ Waiting... ($i/$MAX_RETRIES)"
-    sleep 3
-    if [ "$i" -eq "$MAX_RETRIES" ]; then
-        echo "❌ LlamaCPP did not start."
-        docker logs llamacpp-api
-        exit 1
-    fi
-done
+# GPU flag
+GPU_FLAG=""
+if [ "$DEVICE_CHOICE" = "gpu" ]; then
+    GPU_FLAG="--gpus all"
+    echo "Running container with GPU support"
+else
+    echo "Running container in CPU mode"
+fi
+
+docker run -d $GPU_FLAG $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
 
 # --------------------------
-# 9. Create SearXNG settings in unified folder
+# 9. Setup SearXNG
 # --------------------------
-mkdir -p "$SEARX_FOLDER"
-
-# Ensure full ownership and permissions for gb
-sudo chown -R gb:gb "$SEARX_FOLDER"
-chmod -R 777 "$SEARX_FOLDER"
-
+mkdir -p "$SEARX_FOLDER" && chmod -R 777 "$SEARX_FOLDER"
 cat > "$SEARX_SETTINGS" <<'EOF'
 use_default_settings: true
 general:
@@ -169,55 +192,30 @@ engines:
     disabled: false
   - name: google
     disabled: false
-  - name: bing
-    disabled: false
-  - name: yahoo
-    disabled: false
-  - name: qwant
-    disabled: false
-  - name: ecosia
-    disabled: false
-  - name: yandex
-    disabled: false
-  - name: searxng
     disabled: false
 EOF
-chmod 644 "$SEARX_SETTINGS"
+chmod -R 777 "$SEARX_SETTINGS"
 
-# --------------------------
-# 10. Run SearXNG container (unified folder volume)
-# --------------------------
 docker rm -f searxng 2>/dev/null || true
 docker run -d $PERSIST_FLAG --network "$DOCKER_NET" --name searxng -p $SEARX_PORT:8080 \
     -v "$SEARX_FOLDER":/etc/searxng searxng/searxng:latest
 
+# --------------------------
+# 10. Wait and verify
+# --------------------------
 echo "Waiting 10 seconds for SearXNG..."
 sleep 10
-
-# --------------------------
-# 11. Verify connectivity
-# --------------------------
-if curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK" >/dev/null; then
-    echo "✅ SearXNG running at http://localhost:$SEARX_PORT"
-else
-    echo "⚠️ SearXNG did not respond. Check logs with: docker logs searxng"
-fi
+curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK" && echo "✅ SearXNG OK" || echo "⚠️ SearXNG failed"
 
 docker exec llamacpp-api bash -c "apt-get update && apt-get install -y curl && curl -s http://searxng:8080/search?q=test" >/dev/null \
     && echo "✅ LlamaCPP can reach SearXNG by container name" \
     || echo "⚠️ LlamaCPP cannot reach SearXNG"
 
 # --------------------------
-# 12. End-to-end test
+# 11. End-to-end test
 # --------------------------
-echo ""
-echo "End-to-end test: SearXNG search"
-curl -s "http://localhost:$SEARX_PORT/search?q=latest+news&format=json" | jq
-
-echo ""
-echo "End-to-end test: LlamaCPP"
+echo "End-to-end LlamaCPP test"
 API_URL="http://localhost:$LLAMA_PORT/generate?prompt="
 curl -s "${API_URL}$(echo Hello world | sed 's/ /+/g')" | jq
 
-echo ""
-echo "Setup complete! Everything is under $INSTALL_FOLDER"
+echo "🎉 Setup complete! Everything is under $INSTALL_FOLDER"
