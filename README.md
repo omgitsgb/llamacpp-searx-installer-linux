@@ -694,6 +694,16 @@ No `searxng/searxng:latest` pulled from Docker Hub — everything is **local**. 
 
 ---
 
+Perfect — let’s fully **rewrite your section** so **all paths reflect the new folder structure**:
+
+* **LlamaCPP:** `$HOME/llamacpp-searx/llamacpp`
+* **SearXNG:** `$HOME/llamacpp-searx/searxng`
+* No references to `/home/gb` or Docker Hub SearXNG images.
+
+Here’s the cleaned-up version:
+
+---
+
 ### **Option A – Recommended: Docker Volume (persistent, robust)**
 
 1. Stop old containers and remove old network/volume (if any):
@@ -785,13 +795,12 @@ curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?Quo
 
 ---
 
-
 ### **Rebuild Notes**
 
-If you update your `main.py` or want to refresh the images:
+If you update your `main.py` or want to refresh the LlamaCPP image:
 
 ```bash
-cd $HOME/llamacpp-searx-installer-linux
+cd $HOME/llamacpp-searx/llamacpp
 docker build --pull -t llamacpp-api .
 
 # Optional: restart the container
@@ -810,7 +819,9 @@ curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+te
 curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
 ```
 
-> Returns JSON output from LlamaCPP, optionally using live SearXNG results.
+> ✅ Returns JSON output from LlamaCPP, optionally using live SearXNG results.
+
+---
 
 ---
 
