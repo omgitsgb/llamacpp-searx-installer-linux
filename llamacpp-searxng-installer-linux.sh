@@ -10,7 +10,7 @@ set -e
 # --------------------------
 INSTALL_FOLDER="$HOME/llamacpp-searx"
 LLAMA_FOLDER="$INSTALL_FOLDER/llamacpp"
-SEARX_FOLDER="$INSTALL_FOLDER/searxng"
+SEARX_FOLDER="/home/gb/llamacpp-searx/searxng"  # Fixed path
 MODEL="llama-3.2-1b-instruct-q8_0.gguf"
 MODEL_URL="https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/$MODEL"
 
@@ -139,7 +139,12 @@ done
 # --------------------------
 # 9. Create SearXNG settings in unified folder
 # --------------------------
-mkdir -p "$SEARX_FOLDER" && chmod 755 "$SEARX_FOLDER"
+mkdir -p "$SEARX_FOLDER"
+
+# Ensure full ownership and permissions for gb
+sudo chown -R gb:gb "$SEARX_FOLDER"
+chmod -R 777 "$SEARX_FOLDER"
+
 cat > "$SEARX_SETTINGS" <<'EOF'
 use_default_settings: true
 general:
