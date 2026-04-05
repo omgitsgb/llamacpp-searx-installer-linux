@@ -710,7 +710,6 @@ docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --
 4. **Run SearXNG container using local folder & Docker volume:**
 
 ```bash
-docker volume create searxng-config
 docker rm -f searxng 2>/dev/null
 
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
