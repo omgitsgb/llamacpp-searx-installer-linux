@@ -282,7 +282,7 @@ Got it — here’s your section rewritten so everything reflects your **new fol
 ---
 
 ### 3️⃣ Create Dockerfile 
- (YOU DONT NEED BOTH ONLY THE TYPE YOU WANT)
+ (YOU DONT NEED BOTH)
 
 ### CPU Version
 
