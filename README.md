@@ -562,7 +562,10 @@ You just run it after your containers are up, and it will:
 
 ---
 
-### **Contents of `test.py`**
+### **Make a `test.py`**
+```bash
+nano Dockerfile.gpu
+```
 
 ```python
 import requests  # For sending HTTP requests to the API
