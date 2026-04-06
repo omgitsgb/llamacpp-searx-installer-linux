@@ -281,11 +281,9 @@ Got it — here’s your section rewritten so everything reflects your **new fol
 
 ---
 
-### 3️⃣ Create Dockerfile
+### 3️⃣ Create Dockerfile 
+ (YOU DONT NEED BOTH ONLY THE TYPE YOU WANT)
 
-```bash
-nano Dockerfile.cpu
-```
 ### CPU Version
 
 ```bash
@@ -335,6 +333,8 @@ EXPOSE 8000
 # --------------------------
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
+---
+# OR
 ### GPU Version
 ```bash
 nano Dockerfile.gpu
