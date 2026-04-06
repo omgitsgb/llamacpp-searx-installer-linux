@@ -399,13 +399,6 @@ curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF
 
 ## ⚡ Step 4: Build & Run LlamaCPP Container
 
-```bash
-docker network create llama-searx-net
-docker volume create searxng-config
-```
-
----
-
 ### **CPU Version**
 
 ```bash id="k9f1hb"
