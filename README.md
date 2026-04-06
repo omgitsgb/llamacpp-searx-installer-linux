@@ -564,7 +564,7 @@ You just run it after your containers are up, and it will:
 
 ### **Make a `test.py`**
 ```bash
-nano Dockerfile.gpu
+nano test.py
 ```
 
 ```python
