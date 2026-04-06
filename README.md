@@ -155,7 +155,7 @@ requests
 nano main.py
 ```
 Paste the production-ready API code below. Save & exit.
-```bash
+```python
 import os
 import logging
 import requests
