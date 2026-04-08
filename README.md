@@ -343,8 +343,6 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 ```
 
----
-Perfect — here’s a **clean, ready-to-paste Step 3** for your README. It clearly separates **Persistent** vs **Non-Persistent** and **CPU vs GPU**, with explanatory notes.
 
 ---
 
