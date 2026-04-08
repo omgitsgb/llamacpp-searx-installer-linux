@@ -278,12 +278,3 @@ curl http://localhost:8080/search?q=hello&format=json
 
 ---
 
-✅ This cleaned version keeps:
-
-* Manual setup
-* Docker CPU/GPU setup
-* Test script
-* Health & connectivity checks
-* Persistent auto-restart instructions
-
----
