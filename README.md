@@ -233,9 +233,9 @@ gunicorn -w 4 -b 0.0.0.0:8080 searx.webapp:app --log-level debug
 > Runs on `http://localhost:8080`
 
 ---
-
-### 2️⃣ Docker Setup (Optional)
-### Step 0: Install Docker
+### Docker Setup (Optional)
+---
+## Step 0: Install Docker
 ```bash
 sudo apt update && \
 sudo apt install -y ca-certificates curl gnupg && \
