@@ -65,6 +65,8 @@ cd llamacpp-searx/llamacpp
 ```bash
 nano main.py
 ```
+### Step 2: Create main.py
+
 Paste into main.py
 ```python
 import os
@@ -174,7 +176,7 @@ def generate(prompt: str):
 ```
 ---
 
-### Step 2: Python Environment & Dependencies
+### Step 3: Python Environment & Dependencies
 
 ```bash
 python3 -m venv venv
@@ -186,7 +188,7 @@ pip install -r llm.requirements.txt   # if available
 
 ---
 
-### Step 3: Download LLaMA Model
+### Step 4: Download LLaMA Model
 
 ```bash
 cd llamacpp-searx/llamacpp
@@ -232,7 +234,7 @@ gunicorn -w 4 -b 0.0.0.0:8080 searx.webapp:app --log-level debug
 
 ---
 
-## 2️⃣ Docker Setup (Optional)
+### 2️⃣ Docker Setup (Optional)
 
 ### Step 1: Create Docker Network
 
