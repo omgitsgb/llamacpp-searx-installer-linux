@@ -65,9 +65,7 @@ cd llamacpp-searx/llamacpp
 ```bash
 nano main.py
 ```
-```bash
-nano python.py
-```
+Paste into main.py
 ```python
 import os
 import logging
