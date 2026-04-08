@@ -677,8 +677,17 @@ cd $HOME/llamacpp-searx/llamacpp
 docker build -f Dockerfile.gpu --no-cache -t llamacpp-api .
 docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
-
 ---
+### Step 4: Run SearXNG Container
+
+```bash
+cd $HOME/llamacpp-searx/searxng
+docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest
+```
+---
+
+
+
 
 # Quick Start (Docker - Non-Persistent)
 
@@ -689,13 +698,7 @@ docker run -d --network llama-searx-net -p 8080:8080 searxng/searxng:latest
 docker run -d --network llama-searx-net -p 8000:8000 llamacpp-api
 ```
 
-### Step 4: Run SearXNG Container
 
-```bash
-cd $HOME/llamacpp-searx/searxng
-docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest
-```
----
 
 
 ### 5️⃣ Test sample prompts
