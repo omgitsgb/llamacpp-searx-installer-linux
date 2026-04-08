@@ -186,6 +186,40 @@ def generate(prompt: str):
 # DOCKER NETWORK
 SEARX_URL = "http://searxng:8080/search"
 ```
+### Make requirements.txt
+```
+nano requirements.txt
+```
+### Paste
+```
+annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.13.0
+certifi==2026.2.25
+charset-normalizer==3.4.7
+click==8.3.2
+diskcache==5.6.3
+fastapi==0.135.3
+h11==0.16.0
+httptools==0.7.1
+idna==3.11
+Jinja2==3.1.6
+llama_cpp_python==0.3.20
+MarkupSafe==3.0.3
+numpy==2.4.4
+pydantic==2.12.5
+pydantic_core==2.41.5
+python-dotenv==1.2.2
+PyYAML==6.0.3
+requests==2.33.1
+starlette==1.0.0
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.6.3
+uvicorn==0.44.0
+uvloop==0.22.1
+watchfiles==1.1.1
+websockets==16.0
 
 ---
 
@@ -197,7 +231,7 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install llamacpp uvicorn==0.44.0 requests fastapi
 # Optional: install extra requirements
-pip install -r llm.requirements.txt
+pip install -r requirements.txt
 ```
 
 ---
