@@ -276,7 +276,7 @@ pip install gunicorn==25.3.0
 
 ```bash
 cd ~/llamacpp-searx/searxng/searx
-nano requirements.txt
+nano settings.yml
 ```
 paste:
 ```
