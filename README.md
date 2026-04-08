@@ -151,15 +151,53 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 **GPU Version: `Dockerfile.gpu`** (requires NVIDIA GPU)
 
 ```dockerfile
-FROM nvidia/cuda:13.1.1-runtime-ubuntu22.04
+# Use Python slim as base for a smaller image
+FROM python:3.12-slim
+
+# ---------------------------
+# Environment variables
+# ---------------------------
+ENV PYTHONUNBUFFERED=1
+ENV LANG=C.UTF-8
+
+# ---------------------------
+# System dependencies for building llama_cpp_python and general usage
+# ---------------------------
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    wget \
+    cmake \
+    libomp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------
+# Set working directory
+# ---------------------------
 WORKDIR /app
-RUN apt-get update && apt-get install -y python3 python3-pip build-essential cmake git libssl-dev libffi-dev && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------
+# Copy and install Python dependencies
+# ---------------------------
 COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
-COPY main.py .
-COPY models ./models
+
+# ---------------------------
+# Copy project files
+# ---------------------------
+COPY . .
+
+# ---------------------------
+# Expose FastAPI port
+# ---------------------------
 EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# ---------------------------
+# Default command to run FastAPI with Uvicorn
+# ---------------------------
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 ```
 
 ---
@@ -249,13 +287,3 @@ curl http://localhost:8080/search?q=hello&format=json
 * Persistent auto-restart instructions
 
 ---
-
-If you want, I can **also add a visual workflow diagram at the top** showing:
-
-```
-User → LlamaCPP API → (optional) SearXNG → LlamaCPP Response
-```
-
-so someone reading the README instantly understands the architecture.
-
-Do you want me to add that diagram?
