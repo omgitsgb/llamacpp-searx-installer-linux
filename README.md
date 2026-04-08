@@ -358,9 +358,8 @@ docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --
 ```bash
 cd $HOME/llamacpp-searx/searxng
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest```
-
----
 ```
+---
 
 ## 3️⃣ Test Script (`test.py`)
 
