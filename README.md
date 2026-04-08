@@ -209,17 +209,18 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", 
 **CPU:**
 
 ```bash
-docker build -f Dockerfile.cpu -t llamacpp-api .
-docker rm -f llamacpp-api 2>/dev/null
+cd $HOME/llamacpp-searx/llamacpp
+docker build -f Dockerfile.cpu --no-cache -t llamacpp-api .
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+
 ```
 
 **GPU:**
 
 ```bash
-docker build -f Dockerfile.gpu -t llamacpp-api .
-docker rm -f llamacpp-api 2>/dev/null
-docker run -d --gpus all --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+cd $HOME/llamacpp-searx/llamacpp
+docker build -f Dockerfile.gpu --no-cache -t llamacpp-api .
+docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
 ```
 
 ---
@@ -227,11 +228,8 @@ docker run -d --gpus all --restart unless-stopped --network llama-searx-net -p 8
 ### Step 4: Run SearXNG Container
 
 ```bash
-docker volume create searxng-config
-docker rm -f searxng 2>/dev/null
-docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v searxng-config:/etc/searxng searxng/searxng:latest
-docker cp ~/llamacpp-searx/searxng/settings.yml searxng:/etc/searxng/settings.yml
-```
+cd $HOME/llamacpp-searx/llamacpp
+docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest```
 
 ---
 
