@@ -220,7 +220,7 @@ uvicorn==0.44.0
 uvloop==0.22.1
 watchfiles==1.1.1
 websockets==16.0
-
+```
 ---
 
 ### Step 3: Python Environment & Dependencies
