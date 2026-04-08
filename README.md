@@ -366,9 +366,16 @@ docker run -d --restart unless-stopped --network llama-searx-net --name searxng 
 ### 5️⃣ Test sample prompts
 
 ```bash
-curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
-curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq
-curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
+
+# 2️⃣ Test LlamaCPP API (localhost)
+curl -s --max-time 5 http://localhost:8000/health >/dev/null && echo "✅ LlamaCPP localhost OK" || echo "❌ LlamaCPP localhost FAIL"
+
+# 3️⃣ Test SearXNG (localhost)
+curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "✅ SearXNG localhost OK" || echo "❌ SearXNG localhost FAIL"
+
+# 4️⃣ Test end-to-end prompt through LlamaCPP
+curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq >/dev/null && echo "✅ End-to-end LlamaCPP test OK" || echo "❌ End-to-end LlamaCPP test FAIL"
+
 ```
 ## Connection Tests
 ```
