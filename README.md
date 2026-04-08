@@ -205,7 +205,8 @@ curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF
 ### Step 5: Start LlamaCPP API
 
 ```bash
-cd ../
+cd ~/llamacpp-searx
+cd llamacpp
 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
