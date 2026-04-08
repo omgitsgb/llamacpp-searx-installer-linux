@@ -1,44 +1,47 @@
-# Dockerfile.gpu
-FROM nvidia/cuda:13.1.1-runtime-ubuntu22.04
+# Use Python slim as base for a smaller image
+FROM python:3.12-slim
 
-# --------------------------
-# Set working directory
-# --------------------------
-WORKDIR /app
+# ---------------------------
+# Environment variables
+# ---------------------------
+ENV PYTHONUNBUFFERED=1
+ENV LANG=C.UTF-8
 
-# --------------------------
-# Install Python & dependencies
-# --------------------------
+# ---------------------------
+# System dependencies for building llama_cpp_python and general usage
+# ---------------------------
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip \
     build-essential \
-    cmake \
     git \
-    libssl-dev \
-    libffi-dev \
+    curl \
+    wget \
+    cmake \
+    libomp-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN pip3 install --upgrade pip
+# ---------------------------
+# Set working directory
+# ---------------------------
+WORKDIR /app
 
-# --------------------------
-# Copy requirements and install
-# --------------------------
+# ---------------------------
+# Copy and install Python dependencies
+# ---------------------------
 COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# --------------------------
-# Copy source code and models
-# --------------------------
-COPY main.py .
-COPY models ./models
+# ---------------------------
+# Copy project files
+# ---------------------------
+COPY . .
 
-# --------------------------
-# Expose port
-# --------------------------
+# ---------------------------
+# Expose FastAPI port
+# ---------------------------
 EXPOSE 8000
 
-# --------------------------
-# Run app
-# --------------------------
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ---------------------------
+# Default command to run FastAPI with Uvicorn
+# ---------------------------
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
