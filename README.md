@@ -236,6 +236,18 @@ gunicorn -w 4 -b 0.0.0.0:8080 searx.webapp:app --log-level debug
 ---
 ### Docker Setup (Optional)
 ---
+
+PLEASE BE SURE TO CHANGE THIS LINE IN THE main.py as we can not use the localhost for when we dock our container.
+### Lines are located in the main.py under config
+
+```
+# COMMENT OUT or delete
+# SEARX_URL = "http://localhost:8080/search"
+
+# DOCKER (USE THIS HTTP)
+SEARX_URL = "http://searxng:8080/search"
+
+# ---------------------------
 ## Step 0: Install Docker
 ```bash
 sudo apt update && \
