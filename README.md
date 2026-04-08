@@ -39,79 +39,98 @@ curl --version      # Should print curl version if installed
 git --version       # Should print git version if installed
 lsb_release -a      # Should print Ubuntu version info if installed
 ```
-## Install dependencies if needed:
-```bash
-sudo apt update
-sudo apt install -y curl git lsb-release ca-certificates gnupg
-```
----
-# USING INSTALLER
 
-## 1. Install
-Clone the repo (first time only)
-```bash
-cd ~  # or wherever you want to keep it
-curl -O https://raw.githubusercontent.com/omgitsgb/llamacpp-searx-installer-linux/main/llamacpp-searxng-installer-linux.sh
+# LlamaCPP + SearXNG Manual Setup
 
-```
-
-## 2.  Make the script executable
-
-```bash
-chmod +x llamacpp-searxng-installer-linux.sh
-```
-
-##  3.  Run the script
-```bash
-./llamacpp-searxng-installer-linux.sh
-```
-
----
+This guide walks you through setting up **LlamaCPP** (LLaMA inference) and **SearXNG** (search engine) manually on a Linux environment.
 
 
 ---
 
-# MANUAL SETUP
+## Step 1: Setup Environments
+
+Open a terminal and run the following commands:
+
+```bash
+# Go to home directory
+cd ~
+
+# Create project folder
+mkdir llamacpp-searx
+cd llamacpp-searx
+
+# Create subfolders for LlamaCPP and SearXNG
+mkdir llamacpp
+mkdir searx
+````
 
 ---
 
-## Step 1: Install Docker
-
-**1️⃣ Remove old Docker remnants (if any):**
+## Step 2: Setup LlamaCPP Environment
 
 ```bash
-sudo apt remove -y docker.io docker-compose docker-compose-plugin containerd runc
-sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-sudo apt-get autoremove -y
-sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/apt/keyrings/docker* /etc/apt/sources.list.d/docker*
-```
+cd llamacpp
 
-**2️⃣ Add Docker GPG key & repository:**
+# Create Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-```bash
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-UBUNTU_CODENAME=$(lsb_release -cs)
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $UBUNTU_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list
-```
-
-**3️⃣ Install Docker Engine & Compose Plugin:**
-
-```bash
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-```
-
-**4️⃣ Verify Docker installation:**
-
-```bash
-docker --version
-sudo docker run hello-world
+# Install LlamaCPP and required packages
+pip install llamacpp
+python -m pip install --upgrade pip
+pip install uvicorn==0.44.0
+pip install -r llm.requirements.txt
 ```
 
 ---
+
+## Step 3: Download Model
+
+```bash
+# Create models folder
+mkdir models
+cd models
+
+# Download LLaMA 3.2 1B model
+curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/llama-3.2-1b-instruct-q8_0.gguf
+```
+
+---
+
+## Step 4: Start LlamaCPP API
+
+```bash
+cd ../  # go back to llamacpp folder
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+> The API will now be running on `http://localhost:8000`
+
+---
+
+## Step 5: Setup SearXNG
+
+```bash
+cd ~/llamacpp-searx
+
+# Clone the SearXNG repository
+git clone https://github.com/searxng/searxng.git
+cd searxng
+
+# Upgrade pip and install requirements
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install gunicorn==25.3.0
+```
+
+---
+
+## Step 6: Start SearXNG
+
+```bash
+gunicorn -w 4 -b 0.0.0.0:8080 searx.webapp:app --log-level debug
+```
+
 
 ## Step 2: Create Docker Network
 
