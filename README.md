@@ -56,7 +56,7 @@ $HOME/llamacpp-searx/
 ```bash
 cd ~
 mkdir -p llamacpp-searx/llamacpp/models
-mkdir -p llamacpp-searx/searxng
+mkdir -p llamacpp-searx/searxng/searx
 cd llamacpp-searx/llamacpp
 ```
 
