@@ -522,6 +522,7 @@ PLEASE BE SURE TO CHANGE THIS LINE IN THE main.py as we can not use the localhos
 
 # DOCKER (USE THIS HTTP)
 SEARX_URL = "http://searxng:8080/search"
+```
 
 # ---------------------------
 ## Step 0: Install Docker
