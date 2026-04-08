@@ -40,11 +40,13 @@ lsb_release -a
 $HOME/llamacpp-searx/
 ├─ llamacpp/
 │  ├─ models/
+│  │  └─ llama-3.2-1b-instruct-q8_0.gguf
 │  ├─ venv/
 │  ├─ main.py
 │  └─ requirements.txt
 ├─ searxng/
-│  └─ settings.yml
+│  └─ searx/
+│     └─ settings.yml
 ```
 
 ---
