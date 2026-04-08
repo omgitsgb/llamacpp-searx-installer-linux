@@ -361,7 +361,27 @@ cd $HOME/llamacpp-searx/searxng
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest
 ```
 ---
+## TEST
+```
+### 5️⃣ Test sample prompts
 
+```bash
+curl -s "http://localhost:8000/generate?prompt=What+is+the+latest+news+today?" | jq
+curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq
+curl -s "http://localhost:8000/generate?prompt=Tell+me+a+fun+fact+about+space." | jq
+```
+## Connection Tests
+```
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+curl -s --max-time 5 http://localhost:8000/health >/dev/null && echo "✅ LlamaCPP localhost OK" || echo "❌ LlamaCPP localhost FAIL"
+
+curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "✅ SearXNG localhost OK" || echo "❌ SearXNG localhost FAIL"
+
+PROMPT="news+test"
+curl -s --max-time 10 "http://localhost:8000/generate?prompt=$PROMPT" | grep -q "SearXNG" && echo "✅ LlamaCPP can reach SearXNG" || echo "❌ LlamaCPP cannot reach SearXNG"
+
+```
 ## 3️⃣ Test Script (`test.py`)
 
 ```python
