@@ -404,5 +404,24 @@ curl http://localhost:8000/
 curl http://localhost:8080/search?q=hello&format=json
 ```
 
+## Unmount/Remove Docker Containers & Network
+```base
+# Stop and remove LlamaCPP containers (CPU or GPU) and SearXNG
+docker rm -f llamacpp-api searxng 2>/dev/null || true
+
+# Remove Docker images (optional)
+docker rmi -f llamacpp-api searxng/searxng:latest 2>/dev/null || true
+
+# Remove Docker network
+docker network rm llama-searx-net 2>/dev/null || true
+
+# All-in-one command
+docker rm -f llamacpp-api searxng 2>/dev/null || true && \
+docker rmi -f llamacpp-api searxng/searxng:latest 2>/dev/null || true && \
+docker network rm llama-searx-net 2>/dev/null || true
+
+echo "✅ All LlamaCPP (CPU/GPU), SearXNG containers, images, and network removed."
+```
 ---
 
+$
