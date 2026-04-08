@@ -394,16 +394,6 @@ python3 test.py
 
 ---
 
-## 4️⃣ Health Checks
-
-```bash
-docker ps
-docker network inspect llama-searx-net
-docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
-curl http://localhost:8000/
-curl http://localhost:8080/search?q=hello&format=json
-```
-
 ## Rebuild (if you change any of the code)
 
 Remove LlamaCPP CPU
@@ -465,5 +455,15 @@ docker network rm llama-searx-net 2>/dev/null || true
 echo "✅ All LlamaCPP (CPU/GPU), SearXNG containers, images, and network removed."
 ```
 ---
+
+## 4️⃣ Health Checks
+
+```bash
+docker ps
+docker network inspect llama-searx-net
+docker exec llamacpp-api curl -s http://searxng:8080/search?q=test
+curl http://localhost:8000/
+curl http://localhost:8080/search?q=hello&format=json
+```
 
 $
