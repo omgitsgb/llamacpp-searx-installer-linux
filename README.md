@@ -197,9 +197,6 @@ curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF
 
 ---
 
-### Step 4: Create `main.py`
-
-Paste the **production-ready FastAPI code** (your existing code handles model loading, SearXNG search integration, and /generate endpoint).
 
 ---
 
