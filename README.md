@@ -1,4 +1,3 @@
-Got it — we can clean this README up and structure it so it’s **much easier to follow**, while keeping all the essential info (manual setup, Docker, tests, persistence). Here’s a **refactored, streamlined version**:
 
 ---
 
