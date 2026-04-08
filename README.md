@@ -551,8 +551,16 @@ docker network inspect llama-searx-net 2>/dev/null || docker network create llam
 
 ---
 
-### Step 2: Dockerfile
 
+### Step 2: Dockerfile
+Make one of the follow files
+```
+cd ~
+cd llamacpp-searx/llamacpp
+nano Dockerfile.cpu
+or
+nano dockerfile.gpu
+```
 **CPU Version: `Dockerfile.cpu`**
 
 ```dockerfile
