@@ -70,7 +70,7 @@ nano main.py
 ```
 
 Paste main.py
-```
+```python
 import os
 import logging
 import requests
