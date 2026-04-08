@@ -404,6 +404,45 @@ curl http://localhost:8000/
 curl http://localhost:8080/search?q=hello&format=json
 ```
 
+## Rebuild (if you change any of the code)
+```
+CPU LlamaCPP (remount/rebuild)
+# Stop and remove old container
+docker rm -f llamacpp-cpu 2>/dev/null || true
+
+# Rebuild image (with latest code changes)
+cd $HOME/llamacpp-searx/llamacpp
+docker build -f Dockerfile.cpu --no-cache -t llamacpp-cpu .
+
+# Run container again
+docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-cpu llamacpp-cpu
+
+GPU LlamaCPP (remount/rebuild)
+```
+
+# Stop and remove old container
+```
+docker rm -f llamacpp-gpu 2>/dev/null || true
+```
+# Rebuild image (with latest code changes)
+```
+cd $HOME/llamacpp-searx/llamacpp
+docker build -f Dockerfile.gpu --no-cache -t llamacpp-gpu .
+```
+
+
+# Rebuild Network
+```
+docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-gpu llamacpp-gpu
+```
+
+SearXNG (if you changed settings or want to remount)
+```
+docker rm -f searxng 2>/dev/null || true
+cd $HOME/llamacpp-searx/searxng
+docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest
+```
+
 ## Unmount/Remove Docker Containers & Network
 ```base
 # Stop and remove LlamaCPP containers (CPU or GPU) and SearXNG
