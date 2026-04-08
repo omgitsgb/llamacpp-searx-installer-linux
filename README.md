@@ -453,9 +453,9 @@ docker build -f Dockerfile.gpu --no-cache -t llamacpp-gpu
 ```
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-gpu llamacpp-gpu
 ```
-# Run Network
+# Remove Network
 ```
-docker rm -f searxng 2>/dev/null || true
+docker network rm llama-searx-net 2>/dev/null || true
 ```
 
 # Rebuild Network
