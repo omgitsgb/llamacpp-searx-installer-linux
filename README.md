@@ -361,9 +361,8 @@ cd $HOME/llamacpp-searx/searxng
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest
 ```
 ---
-## TEST
-```
 ### 5️⃣ Test sample prompts
+```
 
 ```bash
 
@@ -377,19 +376,8 @@ curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "�
 curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq >/dev/null && echo "✅ End-to-end LlamaCPP test OK" || echo "❌ End-to-end LlamaCPP test FAIL"
 
 ```
-## Connection Tests
-```
-docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
-curl -s --max-time 5 http://localhost:8000/health >/dev/null && echo "✅ LlamaCPP localhost OK" || echo "❌ LlamaCPP localhost FAIL"
-
-curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "✅ SearXNG localhost OK" || echo "❌ SearXNG localhost FAIL"
-
-PROMPT="news+test"
-curl -s --max-time 10 "http://localhost:8000/generate?prompt=$PROMPT" | grep -q "SearXNG" && echo "✅ LlamaCPP can reach SearXNG" || echo "❌ LlamaCPP cannot reach SearXNG"
-
-```
-## 3️⃣ Test Script (`test.py`)
+### 3️⃣ Test Script (`test.py`)
 
 ```python
 import requests
@@ -422,7 +410,7 @@ python3 test.py
 
 ---
 
-## Rebuild (if you change any of the code)
+### Rebuild (if you change any of the code)
 
 Remove LlamaCPP CPU
 ```
@@ -434,7 +422,7 @@ docker rm -f llamacpp-cpu 2>/dev/null || true
 cd $HOME/llamacpp-searx/llamacpp
 docker build -f Dockerfile.cpu --no-cache -t llamacpp-cpu .
 ```
-# Run container again
+## Run container again
 ```
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-cpu llamacpp-cpu
 ```
