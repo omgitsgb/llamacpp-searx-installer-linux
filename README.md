@@ -1,31 +1,32 @@
-
 ---
 
-# LlamaCPP + SearXNG Full Installer for Linux (Networked)
+# LlamaCPP + SearXNG Full Installer for Linux (Manual / Docker Optional)
 
-This repository provides a **full installer** for running **LlamaCPP** (LLaMA inference) with **SearXNG** (search engine) on Linux. The setup allows LlamaCPP to query SearXNG for real-time search results when generating responses.
+This guide covers both **manual setup** and optional **Docker deployment** for running **LlamaCPP** with **SearXNG**.
 
 ---
 
 ## ✅ Features
 
-* Automated setup with minimal interaction
+* End-to-end LlamaCPP + SearXNG integration
+* Real-time search-enabled responses
 * Optional Docker-based deployment (CPU/GPU)
-* End-to-end health & connectivity tests
-* Sample `test.py` script for verifying API
-* Persistent containers with auto-restart on reboot
+* Persistent containers with auto-restart or non-persistent mode
+* Sample `test.py` for verifying API
 
 ---
 
 ## 🖥️ Requirements
 
-* Linux (tested on Ubuntu 22.04+)
-* `curl`, `git` installed
-* Internet connection for downloading models and Docker images
+* Linux (Ubuntu 22.04+ recommended)
+* `python3`, `pip3`, `curl`, `git`
+* Internet connection for models and packages
 
-Check dependencies:
+Check:
 
 ```bash
+python3 --version
+pip3 --version
 curl --version
 git --version
 lsb_release -a
@@ -33,7 +34,7 @@ lsb_release -a
 
 ---
 
-## 📂 Folder Structure
+## 📂 Recommended Folder Structure
 
 ```text
 $HOME/llamacpp-searx/
@@ -50,7 +51,7 @@ $HOME/llamacpp-searx/
 
 ---
 
-## 1️⃣ Manual Setup
+## 1️⃣ LlamaCPP Manual Setup
 
 ### Step 1: Create Project Folders
 
@@ -60,14 +61,16 @@ mkdir -p llamacpp-searx/llamacpp/models
 mkdir -p llamacpp-searx/searxng/searx
 cd llamacpp-searx/llamacpp
 ```
-## Create your main.py or download it.
-```bash
+
+---
+
+### Step 2: Create `main.py`
+```
 nano main.py
 ```
-### Step 2: Create main.py
 
-Paste into main.py
-```python
+Paste main.py
+```
 import os
 import logging
 import requests
@@ -173,6 +176,16 @@ def generate(prompt: str):
         logging.error(f"Error in /generate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 ```
+> ⚠️ **Note:** If using Docker later, update the SearXNG URL:
+
+```python
+# COMMENT OUT localhost
+# SEARX_URL = "http://localhost:8080/search"
+
+# DOCKER NETWORK
+SEARX_URL = "http://searxng:8080/search"
+```
+
 ---
 
 ### Step 3: Python Environment & Dependencies
@@ -182,7 +195,8 @@ python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install llamacpp uvicorn==0.44.0 requests fastapi
-pip install -r llm.requirements.txt   # if available
+# Optional: install extra requirements
+pip install -r llm.requirements.txt
 ```
 
 ---
@@ -190,30 +204,26 @@ pip install -r llm.requirements.txt   # if available
 ### Step 4: Download LLaMA Model
 
 ```bash
-cd llamacpp-searx/llamacpp
-mkdir models
-cd models
+cd ~/llamacpp-searx/llamacpp/models
 curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/llama-3.2-1b-instruct-q8_0.gguf
 ```
 
 ---
 
-
----
-
-### Step 5: Start LlamaCPP API
+### Step 5: Run LlamaCPP API
 
 ```bash
-cd ~/llamacpp-searx
-cd llamacpp
+cd ~/llamacpp-searx/llamacpp
 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-> Runs on `http://localhost:8000`
+> Available at `http://localhost:8000`
 
 ---
 
-### Step 6: Setup SearXNG
+## 2️⃣ SearXNG Manual Setup
+
+### Step 1: Clone & Install
 
 ```bash
 cd ~/llamacpp-searx
@@ -224,15 +234,43 @@ pip install -r requirements.txt
 pip install gunicorn==25.3.0
 ```
 
-Start the server:
+---
+
+### Step 2: Start SearXNG Server
 
 ```bash
+cd ~/llamacpp-searx/searxng
 gunicorn -w 4 -b 0.0.0.0:8080 searx.webapp:app --log-level debug
 ```
 
-> Runs on `http://localhost:8080`
+> Available at `http://localhost:8080`
+
+> ⚠️ **Tip:** If running LlamaCPP in Docker, change `SEARX_URL` in `main.py` to `http://searxng:8080/search`.
 
 ---
+
+## 3️⃣ Quick Health Check
+
+* Test LlamaCPP API:
+
+```bash
+curl "http://localhost:8000/generate?prompt=Hello"
+```
+
+* Test SearXNG:
+
+```bash
+curl "http://localhost:8080/search?q=test&format=json"
+```
+
+---
+
+## 4️⃣ Optional: Docker Deployment (CPU/GPU)
+
+> See **Step 3 from Docker setup section** above for persistent/non-persistent containers for LlamaCPP and SearXNG.
+
+---
+
 ### Docker Setup (Optional)
 ---
 
