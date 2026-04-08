@@ -453,15 +453,16 @@ docker build -f Dockerfile.gpu --no-cache -t llamacpp-gpu
 ```
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-gpu llamacpp-gpu
 ```
-# Remove Network
+# Remove Network Containers, Rebuild Network
 ```
-docker network rm llama-searx-net 2>/dev/null || true
-```
+# Stop & remove containers
+docker rm -f llamacpp-api searxng 2>/dev/null || true
 
-# Rebuild Network
-```
-cd $HOME/llamacpp-searx/searxng
-docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest
+# Remove old network
+docker network rm llama-searx-net 2>/dev/null || true
+
+# Recreate network
+docker network create llama-searx-net
 ```
 
 ## Unmount/Remove Docker Containers & Network
