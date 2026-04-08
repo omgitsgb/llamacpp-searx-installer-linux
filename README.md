@@ -344,8 +344,20 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", 
 ```
 
 ---
+Perfect — here’s a **clean, ready-to-paste Step 3** for your README. It clearly separates **Persistent** vs **Non-Persistent** and **CPU vs GPU**, with explanatory notes.
+
+---
 
 ### Step 3: Build & Run LlamaCPP Container
+
+> ⚠️ **Persistent vs Non-Persistent:**
+>
+> * **Persistent:** Container auto-restarts on host reboot (`--restart unless-stopped`).
+> * **Non-Persistent:** Container stops when Docker exits or the system reboots (no `--restart` flag).
+
+---
+
+#### **Persistent (auto-restart on reboot)**
 
 **CPU:**
 
@@ -353,7 +365,6 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", 
 cd $HOME/llamacpp-searx/llamacpp
 docker build -f Dockerfile.cpu --no-cache -t llamacpp-api .
 docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
-
 ```
 
 **GPU:**
@@ -366,6 +377,35 @@ docker run -d --restart unless-stopped --network llama-searx-net -p 8000:8000 --
 
 ---
 
+#### **Non-Persistent (stops on exit/reboot)**
+
+**CPU:**
+
+```bash
+cd $HOME/llamacpp-searx/llamacpp
+docker build -f Dockerfile.cpu --no-cache -t llamacpp-api .
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+```
+
+**GPU:**
+
+```bash
+cd $HOME/llamacpp-searx/llamacpp
+docker build -f Dockerfile.gpu --no-cache -t llamacpp-api .
+docker run -d --network llama-searx-net -p 8000:8000 --name llamacpp-api llamacpp-api
+```
+
+---
+
+# Quick Start (Docker - Non-Persistent)
+
+> ⚠️ This setup runs containers **without auto-restart**. If you reboot or stop Docker, the containers will stop.
+```
+docker network create llama-searx-net
+docker run -d --network llama-searx-net -p 8080:8080 searxng/searxng:latest
+docker run -d --network llama-searx-net -p 8000:8000 llamacpp-api
+```
+
 ### Step 4: Run SearXNG Container
 
 ```bash
@@ -373,6 +413,8 @@ cd $HOME/llamacpp-searx/searxng
 docker run -d --restart unless-stopped --network llama-searx-net --name searxng -p 8080:8080 -v /home/gb/llamacpp-searx/searxng/searx:/etc/searxng searxng/searxng:latest
 ```
 ---
+
+
 ### 5️⃣ Test sample prompts
 ```
 
