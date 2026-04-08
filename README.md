@@ -189,6 +189,8 @@ pip install -r llm.requirements.txt   # if available
 ### Step 3: Download LLaMA Model
 
 ```bash
+cd llamacpp-searx/llamacpp
+mkdir models
 cd models
 curl -L -O https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF/resolve/main/llama-3.2-1b-instruct-q8_0.gguf
 ```
