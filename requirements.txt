@@ -1,4 +1,3 @@
 fastapi
 uvicorn[standard]
-llama-cpp-python>=0.1.103
 requests
