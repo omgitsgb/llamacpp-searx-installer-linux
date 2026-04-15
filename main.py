@@ -19,7 +19,7 @@ CONTEXT_SIZE = 4096
 MAX_TOKENS = 512
 
 SEARCH_TRIGGERS = ["news", "latest", "current", "update", "headlines"]
-SEARX_URL = "http://localhost:8080/search"
+SEARX_URL = "http://searxng:8080/search"
 
 # ---------------------------
 # App & Logging
