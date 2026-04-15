@@ -1,47 +1,71 @@
-# Use Python slim as base for a smaller image
-FROM python:3.12-slim
+# ==================================================
+# CUDA-enabled base (required for llama-cpp CUDA build)
+# ==================================================
+FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 
 # ---------------------------
-# Environment variables
+# Environment
 # ---------------------------
 ENV PYTHONUNBUFFERED=1
 ENV LANG=C.UTF-8
 
+# FORCE CUDA BUILD FOR llama-cpp-python
+ENV CMAKE_ARGS="-DGGML_CUDA=on"
+ENV FORCE_CMAKE=1
+ENV CUDACXX=/usr/local/cuda/bin/nvcc
+
 # ---------------------------
-# System dependencies for building llama_cpp_python and general usage
+# System dependencies
 # ---------------------------
 RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
     build-essential \
     git \
     curl \
     wget \
     cmake \
+    ninja-build \
     libomp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------
-# Set working directory
+# Upgrade pip tooling (IMPORTANT for CUDA builds)
+# ---------------------------
+RUN pip3 install --upgrade pip setuptools wheel
+
+# ---------------------------
+# Work directory
 # ---------------------------
 WORKDIR /app
 
 # ---------------------------
-# Copy and install Python dependencies
+# Python dependencies first
 # ---------------------------
 COPY requirements.txt .
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # ---------------------------
-# Copy project files
+# FORCE CUDA build of llama-cpp-python
+# (THIS IS THE CRITICAL PART)
+# ---------------------------
+RUN CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_BUILD_TYPE=Release" \
+    FORCE_CMAKE=1 \
+    pip install --no-cache-dir llama-cpp-python
+
+# ---------------------------
+# Copy application
 # ---------------------------
 COPY . .
 
 # ---------------------------
-# Expose FastAPI port
+# Expose API port
 # ---------------------------
 EXPOSE 8000
 
 # ---------------------------
-# Default command to run FastAPI with Uvicorn
+# Run FastAPI
 # ---------------------------
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
