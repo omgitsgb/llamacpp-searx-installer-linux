@@ -1,21 +1,17 @@
-# ==================================================
-# CUDA-enabled base (required for llama-cpp CUDA build)
-# ==================================================
 FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 
-# ---------------------------
-# Environment
-# ---------------------------
+ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV LANG=C.UTF-8
 
-# FORCE CUDA BUILD FOR llama-cpp-python
+# IMPORTANT CUDA ENV
 ENV CMAKE_ARGS="-DGGML_CUDA=on"
 ENV FORCE_CMAKE=1
+ENV CUDA_HOME=/usr/local/cuda
 ENV CUDACXX=/usr/local/cuda/bin/nvcc
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/compat/lib.real:$LD_LIBRARY_PATH
 
 # ---------------------------
-# System dependencies
+# System deps
 # ---------------------------
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -30,39 +26,34 @@ RUN apt-get update && apt-get install -y \
     libomp-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------------------------
-# Upgrade pip tooling (IMPORTANT for CUDA builds)
-# ---------------------------
 RUN pip3 install --upgrade pip setuptools wheel
 
-# ---------------------------
-# Work directory
-# ---------------------------
 WORKDIR /app
 
 # ---------------------------
-# Python dependencies first
+# Python deps FIRST
 # ---------------------------
 COPY requirements.txt .
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # ---------------------------
-# FORCE CUDA build of llama-cpp-python
+# CUDA llama-cpp build (FIXED)
 # ---------------------------
-RUN pip install --no-cache-dir llama-cpp-python-cu121
+RUN pip install --no-cache-dir \
+    "llama-cpp-python[server]" \
+    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 
 # ---------------------------
-# Copy application
+# IMPORTANT: ensure runtime can see CUDA driver
+# ---------------------------
+RUN ldconfig
+
+# ---------------------------
+# App
 # ---------------------------
 COPY . .
 
-# ---------------------------
-# Expose API port
-# ---------------------------
 EXPOSE 8000
 
-# ---------------------------
-# Run FastAPI
-# ---------------------------
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
