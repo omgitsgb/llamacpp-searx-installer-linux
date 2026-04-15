@@ -23,12 +23,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# CUDA llama-cpp 
+# CUDA llama-cpp (LAST STEP — correct)
 RUN pip install --no-cache-dir \
     "llama-cpp-python[server]" \
     --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 
-# CUDA LINKING
+# FIX CUDA LINKING
 RUN echo "/usr/local/cuda/lib64" > /etc/ld.so.conf.d/cuda.conf && ldconfig
 
 COPY . .
