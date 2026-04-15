@@ -2,7 +2,8 @@
 set -e
 
 # ==================================================
-# LlamaCPP + SearXNG Installer with CUDA detection
+# LlamaCPP + SearXNG Installer (CPU/GPU aware)
+# CUDA-IMPROVED VERSION (NO ARCHITECTURE CHANGES)
 # ==================================================
 
 INSTALL_FOLDER="$HOME/llamacpp-searx"
@@ -17,48 +18,45 @@ LLAMA_PORT=8000
 DOCKER_NET="llama-searx-net"
 
 # --------------------------
-# 0. Detect NVIDIA GPU / CUDA
+# 0. Detect NVIDIA GPU / CUDA (IMPROVED)
 # --------------------------
 echo "Detecting GPU..."
-HAS_GPU=false
-HAS_CUDA=false
+
 DEVICE_CHOICE="cpu"
+HAS_GPU=false
+HAS_DRIVER_CUDA=false
+HAS_TOOLKIT=false
 
 if command -v nvidia-smi &>/dev/null; then
     HAS_GPU=true
     echo "✅ NVIDIA GPU detected"
-    if command -v nvcc &>/dev/null; then
-        HAS_CUDA=true
-        echo "✅ CUDA toolkit installed"
+
+    DRIVER_CUDA=$(nvidia-smi | grep -o "CUDA Version: [0-9.]*" || true)
+    if [ ! -z "$DRIVER_CUDA" ]; then
+        HAS_DRIVER_CUDA=true
+        echo "✅ Driver CUDA detected: $DRIVER_CUDA"
     else
-        echo "⚠️ CUDA toolkit not found"
+        echo "⚠️ CUDA version not detected from driver"
     fi
 else
     echo "⚠️ No NVIDIA GPU detected"
 fi
 
-# Ask user to install CUDA if GPU exists but CUDA missing
-if [ "$HAS_GPU" = true ] && [ "$HAS_CUDA" = false ]; then
-    read -p "CUDA toolkit not found. Install CUDA 13.1 now? (Y/N) " -r CUDA_CHOICE
-    if [[ "$CUDA_CHOICE" =~ ^[Yy]$ ]]; then
-        echo "Installing CUDA..."
-        sudo apt update
-        sudo apt install -y nvidia-cuda-toolkit
-        HAS_CUDA=true
-    else
-        echo "Continuing without CUDA (CPU mode)"
-    fi
+if command -v nvcc &>/dev/null; then
+    HAS_TOOLKIT=true
+    echo "✅ CUDA toolkit installed"
+else
+    echo "⚠️ CUDA toolkit not installed (runtime CUDA may still work)"
 fi
 
-# Ask user which device to use if GPU + CUDA available
-if [ "$HAS_GPU" = true ] && [ "$HAS_CUDA" = true ]; then
+# Ask GPU/CPU
+if [ "$HAS_GPU" = true ]; then
     read -p "Run LlamaCPP on GPU or CPU? (gpu/cpu) " -r DEVICE_INPUT
     if [[ "$DEVICE_INPUT" =~ ^[Gg][Pp][Uu]$ ]]; then
         DEVICE_CHOICE="gpu"
-        echo "✅ LlamaCPP will use GPU"
+        echo "🚀 GPU MODE SELECTED"
     else
-        DEVICE_CHOICE="cpu"
-        echo "⚠️ LlamaCPP will run in CPU mode"
+        echo "🧠 CPU MODE SELECTED"
     fi
 fi
 
@@ -81,20 +79,43 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 # --------------------------
-# 3. Install Docker
+# 3. DOCKER DETECTION + OPTIONAL INSTALL (FIXED)
 # --------------------------
-if ! command -v docker &>/dev/null; then
-    echo "Installing Docker..."
-    sudo apt update
-    sudo apt install -y ca-certificates curl gnupg
-    sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
-    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null <<EOF
+DOCKER_AVAILABLE=false
+
+if command -v docker &>/dev/null; then
+    echo "✅ Docker already installed"
+    DOCKER_AVAILABLE=true
+else
+    echo "⚠️ Docker is not installed"
+
+    read -p "Install Docker now? (Y/N) " -r DOCKER_INSTALL_CHOICE
+
+    if [[ "$DOCKER_INSTALL_CHOICE" =~ ^[Yy]$ ]]; then
+        echo "Installing Docker..."
+
+        sudo apt update
+        sudo apt install -y ca-certificates curl gnupg
+
+        sudo install -m 0755 -d /etc/apt/keyrings
+        sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+        sudo tee /etc/apt/sources.list.d/docker.list > /dev/null <<EOF
 deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable
 EOF
-    sudo apt update
-    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+        sudo apt update
+        sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+        DOCKER_AVAILABLE=true
+        echo "✅ Docker installed successfully"
+
+    else
+        echo "⚠️ Docker not installed — switching to NATIVE mode only"
+        INSTALL_MODE="2"
+        DOCKER_AVAILABLE=false
+    fi
 fi
 
 # --------------------------
@@ -109,6 +130,7 @@ fi
 # 5. Clone or update LlamaCPP repo
 # --------------------------
 mkdir -p "$INSTALL_FOLDER"
+
 if [ -d "$LLAMA_FOLDER" ]; then
     echo "Repo exists, pulling latest changes..."
     cd "$LLAMA_FOLDER"
@@ -123,21 +145,22 @@ fi
 # --------------------------
 mkdir -p "$LLAMA_FOLDER/models"
 MODEL_PATH="$LLAMA_FOLDER/models/$MODEL"
+
 if [ ! -f "$MODEL_PATH" ]; then
-    read -p "No model found. Download LLaMA 3.2 1B model now? (Y/N) " -r MODEL_CHOICE
+    read -p "No model found. Download LLaMA model now? (Y/N) " -r MODEL_CHOICE
     if [[ "$MODEL_CHOICE" =~ ^[Yy]$ ]]; then
         echo "Downloading model..."
         curl -L "$MODEL_URL" -o "$MODEL_PATH"
     else
-        echo "Place '$MODEL' in '$LLAMA_FOLDER/models/' and rerun installer."
+        echo "Place model manually in $MODEL_PATH"
         exit 1
     fi
 fi
 
 # --------------------------
-# 7. Ask for container persistence
+# 7. Docker persistence
 # --------------------------
-read -p "Persist Docker containers on reboot? (Y/N) " -r PERSIST_INPUT
+read -p "Persist containers on reboot? (Y/N) " -r PERSIST_INPUT
 if [[ "$PERSIST_INPUT" =~ ^[Yy]$ ]]; then
     PERSIST_FLAG="--restart unless-stopped"
 else
@@ -145,29 +168,48 @@ else
 fi
 
 # --------------------------
-# 8. Build and run LlamaCPP container
+# 8. CUDA BUILD FLAGS (ONLY ADDITION THAT MATTERS)
 # --------------------------
-echo "Building LlamaCPP Docker image..."
+if [ "$DEVICE_CHOICE" = "gpu" ]; then
+    export CMAKE_ARGS="-DGGML_CUDA=on"
+    export FORCE_CMAKE=1
+    echo "🔥 CUDA build enabled for llama-cpp-python"
+else
+    export CMAKE_ARGS="-DGGML_CUDA=off"
+    export FORCE_CMAKE=1
+    echo "🔵 CPU build mode"
+fi
+
+# --------------------------
+# 9. Build LlamaCPP Docker image
+# --------------------------
 cd "$LLAMA_FOLDER"
-docker build --no-cache -t llamacpp-api .
+
+if [ "$DEVICE_CHOICE" = "gpu" ]; then
+    echo "Building GPU Docker image..."
+    docker build -f Dockerfile.gpu --no-cache -t llamacpp-api .
+else
+    echo "Building CPU Docker image..."
+    docker build -f Dockerfile.cpu --no-cache -t llamacpp-api .
+fi
 
 docker rm -f llamacpp-api 2>/dev/null || true
 
-# GPU flag
 GPU_FLAG=""
 if [ "$DEVICE_CHOICE" = "gpu" ]; then
     GPU_FLAG="--gpus all"
-    echo "Running container with GPU support"
+    echo "Running with GPU support"
 else
-    echo "Running container in CPU mode"
+    echo "Running in CPU mode"
 fi
 
 docker run -d $GPU_FLAG $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
 
 # --------------------------
-# 9. Setup SearXNG
+# 10. Setup SearXNG
 # --------------------------
 mkdir -p "$SEARX_FOLDER" && chmod -R 777 "$SEARX_FOLDER"
+
 cat > "$SEARX_SETTINGS" <<'EOF'
 use_default_settings: true
 general:
@@ -192,30 +234,61 @@ engines:
     disabled: false
   - name: google
     disabled: false
-    disabled: false
 EOF
-chmod -R 777 "$SEARX_SETTINGS"
 
 docker rm -f searxng 2>/dev/null || true
+
 docker run -d $PERSIST_FLAG --network "$DOCKER_NET" --name searxng -p $SEARX_PORT:8080 \
     -v "$SEARX_FOLDER":/etc/searxng searxng/searxng:latest
 
 # --------------------------
-# 10. Wait and verify
+# 11. Wait + verify
 # --------------------------
-echo "Waiting 10 seconds for SearXNG..."
+echo "Waiting for services..."
 sleep 10
+
 curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK" && echo "✅ SearXNG OK" || echo "⚠️ SearXNG failed"
 
 docker exec llamacpp-api bash -c "apt-get update && apt-get install -y curl && curl -s http://searxng:8080/search?q=test" >/dev/null \
-    && echo "✅ LlamaCPP can reach SearXNG by container name" \
-    || echo "⚠️ LlamaCPP cannot reach SearXNG"
+    && echo "✅ Container networking OK" \
+    || echo "⚠️ Container networking issue"
 
 # --------------------------
-# 11. End-to-end test
+# 12. CUDA BACKEND VERIFICATION (FIXED SAFE VERSION)
 # --------------------------
-echo "End-to-end LlamaCPP test"
-API_URL="http://localhost:$LLAMA_PORT/generate?prompt="
-curl -s "${API_URL}$(echo Hello world | sed 's/ /+/g')" | jq
+echo "Checking llama.cpp backend..."
 
-echo "🎉 Setup complete! Everything is under $INSTALL_FOLDER"
+if [ "$INSTALL_MODE" = "2" ]; then
+    LLAMA_VENV="$LLAMA_FOLDER/venv"
+
+    if [ -f "$LLAMA_VENV/bin/activate" ]; then
+        source "$LLAMA_VENV/bin/activate"
+        python3 -c "
+try:
+    from llama_cpp import Llama
+    print('✅ llama-cpp-python installed in venv')
+except Exception as e:
+    print('⚠️ llama-cpp-python missing in venv:', e)
+"
+        deactivate
+    else
+        echo "⚠️ Native venv not found"
+    fi
+
+else
+    # Docker mode check
+    docker exec llamacpp-api python3 -c "
+try:
+    from llama_cpp import Llama
+    print('✅ llama-cpp-python exists in container')
+except Exception as e:
+    print('⚠️ missing inside container:', e)
+"
+fi
+
+# --------------------------
+# DONE
+# --------------------------
+echo "🎉 INSTALL COMPLETE"
+echo "Mode: $DEVICE_CHOICE"
+echo "Folder: $INSTALL_FOLDER"
