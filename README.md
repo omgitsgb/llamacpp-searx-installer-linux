@@ -227,10 +227,22 @@ websockets==16.0
 ```bash
 python3 -m venv venv
 source venv/bin/activate
+
 pip install --upgrade pip
-pip install llamacpp uvicorn==0.44.0 requests fastapi
-# Optional: install extra requirements
+
+pip install uvicorn==0.44.0 requests fastapi
+
+```
+### OPTIONAL (Cuda GPU Acceleration)
+```bash
+# CUDA-enabled llama.cpp
+CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install --no-cache-dir llama-cpp-python
+```
+### Install Requirements
+```
+#
 pip install -r requirements.txt
+
 ```
 
 ---
