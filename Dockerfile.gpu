@@ -49,7 +49,6 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 # ---------------------------
 # FORCE CUDA build of llama-cpp-python
-# (THIS IS THE CRITICAL PART)
 # ---------------------------
 RUN pip install --no-cache-dir llama-cpp-python-cu121
 
