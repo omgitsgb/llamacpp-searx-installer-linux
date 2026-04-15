@@ -51,9 +51,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # FORCE CUDA build of llama-cpp-python
 # (THIS IS THE CRITICAL PART)
 # ---------------------------
-RUN CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_BUILD_TYPE=Release" \
-    FORCE_CMAKE=1 \
-    pip install --no-cache-dir llama-cpp-python
+RUN pip install --no-cache-dir llama-cpp-python-cu121
 
 # ---------------------------
 # Copy application
