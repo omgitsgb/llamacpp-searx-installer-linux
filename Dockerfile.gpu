@@ -1,38 +1,70 @@
+# ==================================================
+# CUDA BASE IMAGE (runtime + dev tools available)
+# ==================================================
 FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 
+# ---------------------------
+# Environment
+# ---------------------------
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV LANG=C.UTF-8
 
-ENV CMAKE_ARGS="-DGGML_CUDA=on"
-ENV FORCE_CMAKE=1
-ENV CUDA_HOME=/usr/local/cuda
-ENV CUDACXX=/usr/local/cuda/bin/nvcc
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/compat/lib.real:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+# IMPORTANT: DO NOT FORCE CMAKE OR CUDA BUILD
+# We rely on prebuilt wheels instead
 
+# CUDA runtime visibility
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/compat/lib.real:$LD_LIBRARY_PATH
+
+# ---------------------------
+# System dependencies
+# ---------------------------
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-venv \
-    build-essential git curl wget \
-    cmake ninja-build libomp-dev \
+    python3 \
+    python3-pip \
+    python3-venv \
+    build-essential \
+    git \
+    curl \
+    wget \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# ---------------------------
+# Upgrade pip tooling
+# ---------------------------
 RUN pip3 install --upgrade pip setuptools wheel
 
+# ---------------------------
+# Work directory
+# ---------------------------
 WORKDIR /app
 
-# SAFE python deps ONLY
+# ---------------------------
+# Python dependencies (NO llama-cpp here)
+# ---------------------------
 COPY requirements.txt .
+
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# CUDA llama-cpp (LAST STEP — correct)
+# ==================================================
+# CUDA llama-cpp-python (PREBUILT WHEEL ONLY)
+# ==================================================
 RUN pip install --no-cache-dir \
     "llama-cpp-python[server]" \
     --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 
-# FIX CUDA LINKING
-RUN echo "/usr/local/cuda/lib64" > /etc/ld.so.conf.d/cuda.conf && ldconfig
-
+# ---------------------------
+# Copy application
+# ---------------------------
 COPY . .
 
+# ---------------------------
+# Expose API port
+# ---------------------------
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ---------------------------
+# Run FastAPI
+# ---------------------------
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
