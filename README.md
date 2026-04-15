@@ -725,7 +725,7 @@ curl -s --max-time 5 http://localhost:8000/health >/dev/null && echo "✅ LlamaC
 curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "✅ SearXNG localhost OK" || echo "❌ SearXNG localhost FAIL"
 
 # 4️⃣ Test end-to-end prompt through LlamaCPP
-curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq >/dev/null && echo "✅ End-to-end LlamaCPP test OK" || echo "❌ End-to-end LlamaCPP test FAIL"
+curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq 
 
 ```
 
