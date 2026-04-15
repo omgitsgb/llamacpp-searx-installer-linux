@@ -3,55 +3,34 @@ FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# IMPORTANT CUDA ENV
 ENV CMAKE_ARGS="-DGGML_CUDA=on"
 ENV FORCE_CMAKE=1
 ENV CUDA_HOME=/usr/local/cuda
 ENV CUDACXX=/usr/local/cuda/bin/nvcc
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/compat/lib.real:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/compat/lib.real:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
-# ---------------------------
-# System deps
-# ---------------------------
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    build-essential \
-    git \
-    curl \
-    wget \
-    cmake \
-    ninja-build \
-    libomp-dev \
+    python3 python3-pip python3-venv \
+    build-essential git curl wget \
+    cmake ninja-build libomp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --upgrade pip setuptools wheel
 
 WORKDIR /app
 
-# ---------------------------
-# Python deps FIRST
-# ---------------------------
+# SAFE python deps ONLY
 COPY requirements.txt .
-
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# ---------------------------
-# CUDA llama-cpp build (FIXED)
-# ---------------------------
+# CUDA llama-cpp 
 RUN pip install --no-cache-dir \
     "llama-cpp-python[server]" \
     --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 
-# ---------------------------
-# IMPORTANT: ensure runtime can see CUDA driver
-# ---------------------------
-RUN ldconfig
+# CUDA LINKING
+RUN echo "/usr/local/cuda/lib64" > /etc/ld.so.conf.d/cuda.conf && ldconfig
 
-# ---------------------------
-# App
-# ---------------------------
 COPY . .
 
 EXPOSE 8000
