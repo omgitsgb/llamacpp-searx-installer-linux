@@ -31,7 +31,7 @@ if command -v nvidia-smi &>/dev/null; then
     HAS_GPU=true
     echo "✅ NVIDIA GPU detected"
 
-    DRIVER_CUDA=$(nvidia-smi | grep -o "CUDA Version: [0-9.]*" || true)
+    DRIVER_CUDA=$(nvidia-smi | grep -oP "CUDA Version:\s*\K[0-9.]+" || true)
     if [ ! -z "$DRIVER_CUDA" ]; then
         HAS_DRIVER_CUDA=true
         echo "✅ Driver CUDA detected: $DRIVER_CUDA"
@@ -110,7 +110,6 @@ EOF
 
         DOCKER_AVAILABLE=true
         echo "✅ Docker installed successfully"
-
     else
         echo "⚠️ Docker not installed — switching to NATIVE mode only"
         INSTALL_MODE="2"
@@ -119,11 +118,13 @@ EOF
 fi
 
 # --------------------------
-# 4. Create Docker network
+# 4. Create Docker network (SAFE)
 # --------------------------
-if ! docker network inspect "$DOCKER_NET" &>/dev/null; then
-    echo "Creating Docker network $DOCKER_NET..."
-    docker network create "$DOCKER_NET"
+if command -v docker &>/dev/null; then
+    if ! docker network inspect "$DOCKER_NET" &>/dev/null; then
+        echo "Creating Docker network $DOCKER_NET..."
+        docker network create "$DOCKER_NET"
+    fi
 fi
 
 # --------------------------
@@ -168,16 +169,32 @@ else
 fi
 
 # --------------------------
-# 8. CUDA BUILD FLAGS (ONLY ADDITION THAT MATTERS)
+# 7.5 PYTORCH CUDA (OPTIONAL - SAFE)
 # --------------------------
 if [ "$DEVICE_CHOICE" = "gpu" ]; then
-    export CMAKE_ARGS="-DGGML_CUDA=on"
-    export FORCE_CMAKE=1
-    echo "🔥 CUDA build enabled for llama-cpp-python"
+    echo "🔥 Installing PyTorch CUDA build (optional validation only)..."
+
+    VENV_PATH="$LLAMA_FOLDER/venv"
+
+    if [ ! -d "$VENV_PATH" ]; then
+        python3 -m venv "$VENV_PATH"
+    fi
+
+    source "$VENV_PATH/bin/activate"
+    pip install --upgrade pip
+
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 || true
+
+    python - << 'EOF'
+import torch
+print("CUDA available:", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("GPU:", torch.cuda.get_device_name(0))
+EOF
+
+    deactivate
 else
-    export CMAKE_ARGS="-DGGML_CUDA=off"
-    export FORCE_CMAKE=1
-    echo "🔵 CPU build mode"
+    echo "🧠 Skipping PyTorch (CPU mode)"
 fi
 
 # --------------------------
@@ -198,9 +215,6 @@ docker rm -f llamacpp-api 2>/dev/null || true
 GPU_FLAG=""
 if [ "$DEVICE_CHOICE" = "gpu" ]; then
     GPU_FLAG="--gpus all"
-    echo "Running with GPU support"
-else
-    echo "Running in CPU mode"
 fi
 
 docker run -d $GPU_FLAG $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:8000 --name llamacpp-api llamacpp-api
@@ -211,30 +225,193 @@ docker run -d $GPU_FLAG $PERSIST_FLAG --network "$DOCKER_NET" -p $LLAMA_PORT:800
 mkdir -p "$SEARX_FOLDER" && chmod -R 777 "$SEARX_FOLDER"
 
 cat > "$SEARX_SETTINGS" <<'EOF'
-use_default_settings: true
-general:
-  debug: false
-  instance_name: "SearXNG"
+debug: true
+instance_name: "SearXNG"
+privacypolicy_url: false
+donation_url: false
+contact_url: false
+enable_metrics: true
+open_metrics: ''
+
+brand:
+  docs_url: https://docs.searxng.org/
+  public_instances: https://searx.space
+  wiki_url: https://github.com/searxng/searxng/wiki
+  issue_url: https://github.com/searxng/searxng/issues
+
 search:
-  safe_search: 2
-  autocomplete: duckduckgo
+  safe_search: 0
+  autocomplete: ""
+  autocomplete_min: 4
+  favicon_resolver: ""
+  default_lang: "auto"
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+  suspended_times:
+    SearxEngineAccessDenied: 180
+    SearxEngineCaptcha: 3600
+    SearxEngineTooManyRequests: 180
+    cf_SearxEngineCaptcha: 1296000
+    cf_SearxEngineAccessDenied: 86400
+    recaptcha_SearxEngineCaptcha: 604800
   formats:
     - html
     - json
+
 server:
   bind_address: "0.0.0.0"
   port: 8080
-  secret_key: "mR7q4vF9sP2xZ8jWkL1uB0yT6cE3nA5"
+  secret_key: "masfasgfweagewsgewsgewsgewsgewsgwesg"
   public_instance: false
-limiter: false
+
 botdetection:
   enabled: false
+  whitelist:
+    - 127.0.0.1
+    - ::1
+
+limiter:
+  enabled: false
+
+valkey:
+  url: false
+
+ui:
+  static_path: ""
+  templates_path: ""
+  query_in_title: false
+  default_theme: simple
+  center_alignment: false
+  default_locale: ""
+  theme_args:
+    simple_style: auto
+  search_on_category_select: true
+  hotkeys: default
+  url_formatting: pretty
+
+outgoing:
+  request_timeout: 3.0
+  useragent_suffix: ""
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+
+plugins:
+  searx.plugins.calculator.SXNGPlugin:
+    active: true
+
+  searx.plugins.infinite_scroll.SXNGPlugin:
+    active: false
+
+  searx.plugins.hash_plugin.SXNGPlugin:
+    active: true
+
+  searx.plugins.self_info.SXNGPlugin:
+    active: true
+
+  searx.plugins.unit_converter.SXNGPlugin:
+    active: true
+
+  searx.plugins.ahmia_filter.SXNGPlugin:
+    active: true
+
+  searx.plugins.hostnames.SXNGPlugin:
+    active: true
+
+  searx.plugins.time_zone.SXNGPlugin:
+    active: true
+
+  searx.plugins.oa_doi_rewrite.SXNGPlugin:
+    active: false
+
+  searx.plugins.tor_check.SXNGPlugin:
+    active: false
+
+  searx.plugins.tracker_url_remover.SXNGPlugin:
+    active: true
+
+categories_as_tabs:
+  general:
+  images:
+  videos:
+  news:
+  map:
+  music:
+  it:
+  science:
+  files:
+  social media:
+
 engines:
   - name: duckduckgo
-    disabled: false
+    engine: duckduckgo
+    shortcut: ddg
+
   - name: google
-    disabled: false
+    engine: google
+    shortcut: go
+
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: true
+
+  - name: yahoo
+    engine: yahoo
+    shortcut: yh
+    disabled: true
+
+  - name: yahoo news
+    engine: yahoo_news
+    shortcut: yhn
+
+  - name: youtube
+    shortcut: yt
+    engine: youtube_noapi
+
+  - name: youtube_api
+    engine: youtube_api
+    shortcut: yta
+    inactive: true
+
+  - name: braveapi
+    engine: braveapi
+    api_key: ""
+    inactive: true
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    time_range_support: true
+    paging: true
+    categories: [general, web]
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    display_type: ["infobox"]
+    categories: [general]
+
+  - name: bing news
+    engine: bing_news
+    shortcut: bin
+
+  - name: duckduckgo news
+    engine: duckduckgo_extra
+    categories: [news]
+    ddg_category: news
+    shortcut: ddn
+
+doi_resolvers:
+  oadoi.org: 'https://oadoi.org/'
+  doi.org: 'https://doi.org/'
+  sci-hub.se: 'https://sci-hub.se/'
+  sci-hub.st: 'https://sci-hub.st/'
+  sci-hub.ru: 'https://sci-hub.ru/'
+
+default_doi_resolver: 'oadoi.org'
 EOF
+
 
 docker rm -f searxng 2>/dev/null || true
 
@@ -252,39 +429,6 @@ curl -s --head "http://localhost:$SEARX_PORT/search?q=hello" | grep "200 OK" && 
 docker exec llamacpp-api bash -c "apt-get update && apt-get install -y curl && curl -s http://searxng:8080/search?q=test" >/dev/null \
     && echo "✅ Container networking OK" \
     || echo "⚠️ Container networking issue"
-
-# --------------------------
-# 12. CUDA BACKEND VERIFICATION (FIXED SAFE VERSION)
-# --------------------------
-echo "Checking llama.cpp backend..."
-
-if [ "$INSTALL_MODE" = "2" ]; then
-    LLAMA_VENV="$LLAMA_FOLDER/venv"
-
-    if [ -f "$LLAMA_VENV/bin/activate" ]; then
-        source "$LLAMA_VENV/bin/activate"
-        python3 -c "
-try:
-    from llama_cpp import Llama
-    print('✅ llama-cpp-python installed in venv')
-except Exception as e:
-    print('⚠️ llama-cpp-python missing in venv:', e)
-"
-        deactivate
-    else
-        echo "⚠️ Native venv not found"
-    fi
-
-else
-    # Docker mode check
-    docker exec llamacpp-api python3 -c "
-try:
-    from llama_cpp import Llama
-    print('✅ llama-cpp-python exists in container')
-except Exception as e:
-    print('⚠️ missing inside container:', e)
-"
-fi
 
 # --------------------------
 # DONE
