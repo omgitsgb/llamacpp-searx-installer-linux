@@ -236,7 +236,6 @@ pip install uvicorn==0.44.0 requests fastapi
 ### OPTIONAL (Cuda GPU Acceleration)
 ```bash
 # CUDA-enabled llama.cpp
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install --no-cache-dir llama-cpp-python
 ```
 ### Install Requirements
