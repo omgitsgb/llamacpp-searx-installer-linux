@@ -594,15 +594,6 @@ engines:
     engine: youtube_noapi
     shortcut: yt
 
-
-# ==================================================
-# DISABLED (INTENTIONALLY REMOVED FOR STABILITY)
-# ==================================================
-
-# ❌ DuckDuckGo web search removed (captcha instability)
-# ❌ Yahoo removed (low quality + duplicates)
-# ❌ Brave removed (rate limiting issues)
-# ❌ Bing web kept, Bing news preferred for news reliability
 ```
 ### Step 2: Start SearXNG Server
 
