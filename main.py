@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 import subprocess
+from fastapi.responses import StreamingResponse
 
 from fastapi import FastAPI, HTTPException
 from llama_cpp import Llama
@@ -198,3 +199,62 @@ def generate(prompt: str):
     except Exception as e:
         logging.error(f"Error in /generate: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+        
+@app.get("/generate_stream")
+def generate_stream(prompt: str):
+    global llm
+
+    if llm is None:
+        raise HTTPException(status_code=503, detail="Model not loaded yet")
+
+    def stream_tokens():
+
+        # --------------------------
+        # SAME SEARCH LOGIC AS /generate
+        # --------------------------
+        search_triggered = any(
+            word.lower() in prompt.lower()
+            for word in SEARCH_TRIGGERS
+        )
+
+        search_results = searx_search(prompt) if search_triggered else []
+
+        if search_results:
+            numbered = "\n".join([
+                f"{i+1}. Title: {r['title']}\n"
+                f"   Content: {r['content'][:300]}\n"
+                f"   URL: {r['url']}"
+                for i, r in enumerate(search_results)
+            ])
+
+            full_prompt = (
+                "Use ONLY the search results below:\n\n"
+                f"{numbered}\n\n"
+                f"User question: {prompt}\n"
+                "Answer:"
+            )
+        else:
+            full_prompt = prompt
+
+        # --------------------------
+        # STREAM MODEL OUTPUT
+        # --------------------------
+        stream = llm(
+            full_prompt,
+            max_tokens=MAX_TOKENS,
+            stream=True
+        )
+
+        for chunk in stream:
+            try:
+                if isinstance(chunk, dict):
+                    token = chunk["choices"][0].get("text", "")
+                else:
+                    token = chunk.choices[0].text
+
+                yield token
+
+            except Exception as e:
+                yield f"\n[error: {e}]"
+
+    return StreamingResponse(stream_tokens(), media_type="text/plain")
