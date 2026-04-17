@@ -3,6 +3,8 @@ import logging
 import requests
 import subprocess
 from fastapi.responses import StreamingResponse
+import urllib.parse
+import re
 
 from fastapi import FastAPI, HTTPException
 from llama_cpp import Llama
@@ -116,6 +118,11 @@ def searx_search(user_search):
 def root():
     return {"message": f"LlamaCPP API running with {gguf_models[0]}"}
 
+def clean_prompt(prompt: str):
+    prompt = urllib.parse.unquote(prompt)
+    prompt = re.sub(r"%[0-9A-Fa-f]{2}", " ", prompt)
+    prompt = " ".join(prompt.split())
+    return prompt
 
 @app.get("/generate")
 def generate(prompt: str):
@@ -125,6 +132,7 @@ def generate(prompt: str):
         raise HTTPException(status_code=503, detail="Model not loaded yet")
 
     logging.info(f"Prompt: {prompt}")
+    prompt = clean_prompt(prompt)
 
     try:
         # --------------------------
@@ -137,23 +145,47 @@ def generate(prompt: str):
 
         search_results = searx_search(prompt) if search_triggered else []
 
+        # --------------------------
+        # BUILD PROMPT
+        # --------------------------
         if search_results:
             numbered = "\n".join([
-                f"{i+1}. Title: {r['title']}\n   Content: {r['content'][:300]}\n   URL: {r['url']}"
+                f"{i+1}. Title: {r['title']}\n"
+                f"   Content: {r['content'][:300]}\n"
+                f"   URL: {r['url']}"
                 for i, r in enumerate(search_results)
             ])
 
-            full_prompt = (
-                f"Answer using ONLY these search results:\n"
-                f"{numbered}\n\n"
-                f"Question: {prompt}\n"
-                f"Answer:"
-            )
+            full_prompt = f"""
+You are a real-time news analyst.
+
+Your task:
+- Synthesize information from multiple sources
+- Write a detailed, informative response
+- Do NOT be brief
+- Prefer combining sources into a summary
+
+RULES:
+- Use ONLY the sources below
+- If sources are weak, still summarize them
+- Do NOT say "visit websites"
+
+SOURCES:
+{numbered}
+
+TASK:
+Write a detailed news-style summary of the question below.
+
+QUESTION:
+{prompt}
+
+ANSWER (be detailed, structured, and informative):
+"""
         else:
             full_prompt = prompt
 
         # --------------------------
-        # STREAMING (FIXED)
+        # STREAMING
         # --------------------------
         stream = llm(
             full_prompt,
@@ -166,21 +198,18 @@ def generate(prompt: str):
         print("Assistant: ", end="", flush=True)
 
         for chunk in stream:
-
-            # SAFE COMPATIBLE EXTRACTION
-            token = ""
-
             try:
                 if isinstance(chunk, dict):
                     token = chunk["choices"][0].get("text", "")
                 else:
                     token = chunk.choices[0].text
+
+                print(token, end="", flush=True)
+                response.append(token)
+
             except Exception as e:
                 logging.error(f"Stream parse error: {e}")
                 continue
-
-            print(token, end="", flush=True)
-            response.append(token)
 
         print()
 
@@ -207,11 +236,9 @@ def generate_stream(prompt: str):
     if llm is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
 
-    def stream_tokens():
+    def stream_tokens(prompt):
+        prompt = clean_prompt(prompt)
 
-        # --------------------------
-        # SAME SEARCH LOGIC AS /generate
-        # --------------------------
         search_triggered = any(
             word.lower() in prompt.lower()
             for word in SEARCH_TRIGGERS
@@ -236,9 +263,6 @@ def generate_stream(prompt: str):
         else:
             full_prompt = prompt
 
-        # --------------------------
-        # STREAM MODEL OUTPUT
-        # --------------------------
         stream = llm(
             full_prompt,
             max_tokens=MAX_TOKENS,
@@ -257,4 +281,4 @@ def generate_stream(prompt: str):
             except Exception as e:
                 yield f"\n[error: {e}]"
 
-    return StreamingResponse(stream_tokens(), media_type="text/plain")
+    return StreamingResponse(stream_tokens(prompt), media_type="text/plain")
