@@ -103,7 +103,7 @@ def searx_search(query):
 def generate_response(prompt: str):
     prompt_lower = prompt.lower()
 
-    # direct inline trigger logic (NO helper function)
+
     search_triggered = (
         len(prompt.split()) >= 3 and
         any(word in prompt_lower for word in SEARCH_TRIGGERS)
