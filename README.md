@@ -740,10 +740,7 @@ curl -s --max-time 5 "http://localhost:8080/search?q=test" >/dev/null && echo "�
 # 4️⃣ Test end-to-end prompt through LlamaCPP
 curl -s "http://localhost:8000/generate?prompt=Summarize+the+top+headlines+in+technology." | jq
 
-# Stream Tokens Test
-curl -N "http://localhost:8000/generate_stream?prompt=latest%20news"
-curl -N "http://localhost:8000/generate_stream?prompt=what's%20the%20latest%20news"
-```
+
 
 ### 3️⃣ Test Script (`test.py`)
 
