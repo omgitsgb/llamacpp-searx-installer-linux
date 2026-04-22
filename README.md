@@ -1,3 +1,6 @@
+
+
+
 ## 🎥 Video Tutorial
 [![Watch the video](https://i.imgur.com/x6aPpbx.jpeg)](https://www.youtube.com/watch?v=MeZc43cXQG8)
 ---
@@ -51,6 +54,22 @@ $HOME/llamacpp-searx/
 │     └─ settings.yml
 ```
 
+## Installers
+To run the installers 
+Download them and give them full persmission
+```
+# For just Virtual Enviroments Setup
+chmod +x native_installer.sh
+# Docker Setup
+chmod +x llamacpp-searxng-installer-linux.sh
+
+```
+# Install by going
+```
+./native_installer.sh
+# OR
+./llamacpp-searxng-installer-linux.sh
+```
 ---
 
 ## 1️⃣ LlamaCPP Manual Setup
