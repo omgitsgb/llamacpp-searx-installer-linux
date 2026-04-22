@@ -57,7 +57,7 @@ $HOME/llamacpp-searx/
 ## Installers
 To run the installers 
 Download them and give them full persmission
-```
+```bash
 # For just Virtual Enviroments Setup
 chmod +x native_installer.sh
 # Docker Setup
@@ -65,7 +65,7 @@ chmod +x llamacpp-searxng-installer-linux.sh
 
 ```
 # Install by going
-```
+```bash
 ./native_installer.sh
 # OR
 ./llamacpp-searxng-installer-linux.sh
