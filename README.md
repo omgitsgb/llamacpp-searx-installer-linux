@@ -777,7 +777,7 @@ python3 test.py
 
 ## Optional: TEST APPLICATION
 These are instructions to create the front end application but the same idea can be applied to any program using this sort of backend. 
-```
+```bash
 cd ~/llamacpp-searx/searxng
 mkdir test_app
 cd test_app
