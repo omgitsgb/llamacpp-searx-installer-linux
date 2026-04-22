@@ -851,7 +851,7 @@ cd templates
 nano index.html
 ```
 paste
-```
+```html
 <!-- templates/index.html -->
 <!DOCTYPE html>
 <html>
