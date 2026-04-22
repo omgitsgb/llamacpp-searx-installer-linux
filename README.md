@@ -775,6 +775,198 @@ python3 test.py
 
 ---
 
+## Optional: TEST APPLICATION
+These are instructions to create the front end application but the same idea can be applied to any program using this sort of backend. 
+```
+cd ~/llamacpp-searx/searxng
+mkdir test_app
+cd test_app
+python3 -m venv venv
+source venv/bin/activate
+pip install flask
+pip install requests
+nano test.py
+```
+
+# Paste
+```python
+from flask import Flask, request, render_template
+import requests
+
+app = Flask(__name__)
+
+LLAMA_GENERATE_URL = "http://localhost:8000/generate"
+
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    output = ""
+    prompt = ""
+
+    search_results = []
+    search_triggered = False
+
+    if request.method == "POST":
+        prompt = request.form.get("prompt", "").strip()
+
+        if prompt:
+            try:
+                # ==========================
+                # CALL FASTAPI GENERATE (single source of truth)
+                # ==========================
+                response = requests.get(
+                    LLAMA_GENERATE_URL,
+                    params={"prompt": prompt},
+                    timeout=120
+                )
+
+                response.raise_for_status()
+                data = response.json()
+
+                # ==========================
+                # EXTRACT RESULTS
+                # ==========================
+                output = data.get("output", "")
+                search_results = data.get("search_results", [])
+                search_triggered = data.get("search_triggered", False)
+
+            except Exception as e:
+                output = f"Error: {e}"
+
+    return render_template(
+        "index.html",
+        prompt=prompt,
+        output=output,
+        search_results=search_results,
+        search_triggered=search_triggered
+    )
+
+
+if __name__ == "__main__":
+    app.run(debug=True, threaded=True)
+```
+```
+mkdir templates
+cd templates
+nano index.html
+```
+paste
+```
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LlamaCPP Frontend</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f0f0f0; }
+        input, textarea { width: 100%; padding: 10px; margin: 5px 0; font-size: 16px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .output { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
+        h2 { margin-top: 0; }
+
+        .dropdown {
+            margin-top: 10px;
+        }
+
+        .dropdown-btn {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+        }
+
+        .dropdown-content {
+            display: none;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-top: 5px;
+            padding: 10px;
+        }
+
+        .dropdown-content ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .dropdown-content li {
+            margin-bottom: 15px;
+        }
+
+        .dropdown-content a {
+            color: #007BFF;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .dropdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .snippet {
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>LlamaCPP + SearXNG Frontend</h1>
+
+    <form method="post">
+        <label>Enter your prompt:</label>
+        <textarea name="prompt" rows="3">{{ prompt }}</textarea>
+        <button type="submit">Generate</button>
+    </form>
+
+    {% if output %}
+    <div class="output">
+        <h2>Generated Output:</h2>
+        <pre style="white-space: pre-wrap;">{{ output }}</pre>
+
+        <h3>Search Triggered: {{ search_triggered }}</h3>
+
+        {% if search_results %}
+        <div class="dropdown">
+            <button class="dropdown-btn" onclick="toggleDropdown()">
+                View Search Results ({{ search_results|length }})
+            </button>
+
+            <div class="dropdown-content" id="dropdown-content">
+                <ul>
+                    {% for r in search_results %}
+                    <li>
+                        <a href="{{ r.url }}" target="_blank">{{ r.title }}</a><br>
+                        <span class="snippet">{{ r.content }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <script>
+        function toggleDropdown() {
+            var content = document.getElementById("dropdown-content");
+            content.style.display = (content.style.display === "block") ? "none" : "block";
+        }
+    </script>
+</body>
+</html>
+```
+```
+cd ..
+python3 test.py
+```
+Go to the IP address to see the front end web application.
+
+
 ### Rebuild (if you change any of the code)
 
 Remove LlamaCPP CPU
