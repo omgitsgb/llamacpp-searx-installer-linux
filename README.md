@@ -322,7 +322,6 @@ CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install --no-cache-dir llama-cpp-p
 ```
 ### Install Requirements
 ```
-#
 pip install -r requirements.txt
 
 ```
