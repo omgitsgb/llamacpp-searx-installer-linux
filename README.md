@@ -1,4 +1,5 @@
-[![Watch the video](https://imgur.com/a/eWNw1iv)](https://www.youtube.com/watch?v=MeZc43cXQG8)
+## 🎥 Video Tutorial
+[![Watch the video](https://i.imgur.com/x6aPpbx.jpeg)](https://www.youtube.com/watch?v=MeZc43cXQG8)
 ---
 
 # LlamaCPP + SearXNG Full Installer for Linux (Manual / Docker Optional)
